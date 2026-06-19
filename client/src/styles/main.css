@@ -1,0 +1,64 @@
+/* Global resets + CSS variables for both dark and light themes.
+   The /obs view sets background:transparent so OBS composites it over the
+   scene; the editor uses the themed background. */
+* { box-sizing: border-box; }
+html, body, #app { height: 100%; margin: 0; }
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  background: var(--bg);
+  color: var(--text);
+  overflow: hidden;
+}
+
+:root, .theme-dark {
+  --bg: #1b1c1f;
+  --bg-2: #232529;
+  --bg-3: #2c2f34;
+  --panel: #202225;
+  --border: #3a3d42;
+  --text: #e9eaed;
+  --text-dim: #9aa0a6;
+  --accent: #3b82f6;
+  --accent-2: #60a5fa;
+  --danger: #ef4444;
+  --ok: #22c55e;
+  --shadow: 0 8px 24px rgba(0,0,0,.35);
+}
+.theme-light {
+  --bg: #f4f5f7;
+  --bg-2: #ffffff;
+  --bg-3: #e9ecef;
+  --panel: #ffffff;
+  --border: #d0d4da;
+  --text: #1b1c1f;
+  --text-dim: #5f6571;
+  --accent: #2563eb;
+  --accent-2: #3b82f6;
+  --danger: #dc2626;
+  --ok: #16a34a;
+  --shadow: 0 8px 24px rgba(0,0,0,.12);
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--bg-3);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+button:hover { background: var(--bg-2); }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+button.primary:hover { background: var(--accent-2); }
+button.danger { background: transparent; color: var(--danger); border-color: var(--danger); }
+input, select {
+  font-family: inherit;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 8px;
+}
+.muted { color: var(--text-dim); }

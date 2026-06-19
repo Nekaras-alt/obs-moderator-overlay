@@ -1,0 +1,33 @@
+{
+  "name": "obs-moderator-overlay",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Remote moderator-controlled overlay for OBS Studio via Browser Source",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -k -n SERVER,CLIENT -c blue,green \"npm:dev:server\" \"npm:dev:client\"",
+    "dev:server": "node server/index.js",
+    "dev:client": "vite --host",
+    "build": "vite build",
+    "start": "cross-env NODE_ENV=production node server/index.js",
+    "serve": "npm run build && npm start"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "multer": "^2.0.1",
+    "obs-websocket-js": "^5.0.8",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.1.4",
+    "concurrently": "^9.0.1",
+    "cross-env": "^7.0.3",
+    "pinia": "^2.2.4",
+    "vite": "^5.4.9",
+    "vue": "^3.5.12",
+    "vue-router": "^4.4.5"
+  },
+  "allowScripts": {
+    "esbuild@0.21.5": true
+  }
+}
