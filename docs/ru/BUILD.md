@@ -178,7 +178,7 @@ build-full.bat
 | `server/`, `electron/`, `shared/` | globs в `package.json` → `build.files` |
 | Новый runtime-файл **вне** этих папок | добавь путь в `package.json` `build.files` |
 
-После упаковки [`scripts/verify-packaged.mjs`](../scripts/verify-packaged.mjs) сравнивает дерево `server|electron|shared` с `release\win-unpacked\resources\app` и падает, если чего-то нет. UI-файлы поимённо не перечисляются — достаточно свежего `dist/assets`.
+После упаковки [`scripts/verify-packaged.mjs`](../../scripts/verify-packaged.mjs) сравнивает дерево `server|electron|shared` с `release\win-unpacked\resources\app` и падает, если чего-то нет. UI-файлы поимённо не перечисляются — достаточно свежего `dist/assets`.
 
 Повторная проверка вручную:
 
