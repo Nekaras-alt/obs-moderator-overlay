@@ -1,56 +1,85 @@
-// server/auth.js
-// Lightweight PIN-based session auth. The moderator connects over Tailscale,
-// which is itself private, but we still gate the editor behind a PIN so a
-// mistyped address or a compromised node can't take over the stream.
-//
-// OBS Browser Source uses a special "viewer" token (no PIN) so it can render
-// without human interaction. The viewer token only receives the scene; it
-// cannot author patches.
-
+// PIN-based session auth + secrets persistence.
 import fs from 'node:fs'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
 import crypto from 'node:crypto'
+import { DATA_DIR, ensureDirs } from './config/paths.js'
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const SECRET_FILE = path.join(__dirname, '..', 'data', '.secret')
-
-// Sessions: token -> { role, createdAt }. In-memory; cleared on restart,
-// which is fine — the moderator just re-enters the PIN.
+const SECRET_FILE = path.join(DATA_DIR, '.secret')
 const sessions = new Map()
 const SESSION_TTL = 1000 * 60 * 60 * 12 // 12h
 
+// Login rate limit: 5 attempts / minute per IP.
+const loginAttempts = new Map() // ip -> { count, resetAt }
+const LOGIN_MAX = 5
+const LOGIN_WINDOW_MS = 60_000
+
+const PIN_MIN = 4
+const PIN_MAX = 16
+const PIN_RE = /^[A-Za-z0-9]+$/
+
+export function normalizePin(raw) {
+  return String(raw ?? '').trim()
+}
+
+export function validatePinFormat(pin) {
+  const p = normalizePin(pin)
+  if (p.length < PIN_MIN || p.length > PIN_MAX) {
+    return { ok: false, error: `PIN must be ${PIN_MIN}–${PIN_MAX} characters` }
+  }
+  if (!PIN_RE.test(p)) {
+    return { ok: false, error: 'PIN may only contain letters and digits' }
+  }
+  return { ok: true, pin: p }
+}
+
 function loadOrCreateSecret() {
+  ensureDirs()
   try {
     if (fs.existsSync(SECRET_FILE)) {
       const raw = fs.readFileSync(SECRET_FILE, 'utf8').trim()
-      if (raw) return JSON.parse(raw)
+      if (raw) {
+        const parsed = JSON.parse(raw)
+        // Existing installs with a PIN are already set up.
+        if (parsed.pin && parsed.setupComplete === undefined) {
+          parsed.setupComplete = true
+        }
+        if (!parsed.viewerToken) parsed.viewerToken = crypto.randomBytes(16).toString('hex')
+        if (!parsed.adminToken) parsed.adminToken = crypto.randomBytes(16).toString('hex')
+        return parsed
+      }
     }
-  } catch (_) { /* regenerate below */ }
+  } catch (_) { /* regenerate */ }
 
-  // First run: generate a random PIN and a long-lived viewer token.
-  const pin = String(Math.floor(1000 + Math.random() * 9000))
-  const viewerToken = crypto.randomBytes(16).toString('hex')
-  const adminToken = crypto.randomBytes(16).toString('hex') // bootstrap, unused
-  const data = { pin, viewerToken, adminToken }
+  // First run: tokens only — streamer chooses PIN via /api/setup.
+  const data = {
+    pin: '',
+    viewerToken: crypto.randomBytes(16).toString('hex'),
+    adminToken: crypto.randomBytes(16).toString('hex'),
+    setupComplete: false
+  }
   try {
-    fs.mkdirSync(path.dirname(SECRET_FILE), { recursive: true })
     fs.writeFileSync(SECRET_FILE, JSON.stringify(data, null, 2), { mode: 0o600 })
-  } catch (_) { /* ignore; in-memory still works */ }
+  } catch (_) { /* ignore */ }
   return data
 }
 
 let secret = loadOrCreateSecret()
 
 export function getSecret() { return secret }
-export function resetSecret() { secret = loadOrCreateSecret(); return secret }
 
-// Persist the in-memory secret back to disk (atomic-ish: write tmp + rename,
-// matching state.js's pattern). Best-effort — a failure just means the change
-// won't survive a restart, but in-memory state stays correct for this session.
+export function needsSetup() {
+  return !secret.setupComplete || !secret.pin
+}
+
+export function resetSecret() {
+  try { if (fs.existsSync(SECRET_FILE)) fs.unlinkSync(SECRET_FILE) } catch (_) { /* ignore */ }
+  secret = loadOrCreateSecret()
+  return secret
+}
+
 function persistSecret() {
   try {
-    fs.mkdirSync(path.dirname(SECRET_FILE), { recursive: true })
+    ensureDirs()
     const tmp = SECRET_FILE + '.tmp'
     fs.writeFileSync(tmp, JSON.stringify(secret, null, 2), { mode: 0o600 })
     fs.renameSync(tmp, SECRET_FILE)
@@ -59,28 +88,59 @@ function persistSecret() {
   }
 }
 
-// --- 7TV user access token (optional) ---------------------------------------
-// Stored SERVER-SIDE ONLY. The moderator pastes a personal access token from
-// 7tv.app → Settings; we use it to read their emote sets ("My Emotes"). It is
-// never sent to the browser — only from this proxy to 7tv.io over HTTPS — so
-// it can't leak to the OBS Browser Source or any client. Empty string = not
-// connected (search/browse/global all work anonymously without it).
-export function get7tvToken() { return secret.sevenTvToken || '' }
+/** One-time first-run PIN. Fails if setup already complete. */
+export function completeSetup(rawPin) {
+  if (!needsSetup()) return { ok: false, error: 'Setup already completed' }
+  const v = validatePinFormat(rawPin)
+  if (!v.ok) return v
+  secret.pin = v.pin
+  secret.setupComplete = true
+  persistSecret()
+  return { ok: true }
+}
 
-export function set7tvToken(token) {
+/** Change PIN while authenticated (current PIN must match). */
+export function changePin(currentRaw, nextRaw) {
+  if (needsSetup()) return { ok: false, error: 'Complete first-run setup first' }
+  if (normalizePin(currentRaw) !== secret.pin) {
+    return { ok: false, error: 'Current PIN is incorrect' }
+  }
+  const v = validatePinFormat(nextRaw)
+  if (!v.ok) return v
+  secret.pin = v.pin
+  secret.setupComplete = true
+  persistSecret()
+  return { ok: true }
+}
+
+export function get7tvToken() { return secret.sevenTvToken || '' }
+export function get7tvUsername() { return secret.sevenTvUsername || '' }
+
+export function set7tvToken(token, username = '') {
   secret.sevenTvToken = typeof token === 'string' ? token.trim() : ''
+  if (username) secret.sevenTvUsername = String(username)
   persistSecret()
   return secret.sevenTvToken
 }
 
 export function clear7tvToken() {
   secret.sevenTvToken = ''
+  secret.sevenTvUsername = ''
   persistSecret()
 }
 
-export function createSession(role) {
+export function createSession(role, extra = {}) {
   const token = crypto.randomBytes(24).toString('hex')
-  sessions.set(token, { role, createdAt: Date.now() })
+  const sessionId = crypto.randomBytes(8).toString('hex')
+  const avatarSeed = crypto.createHash('sha256').update(sessionId).digest('hex').slice(0, 8)
+  sessions.set(token, {
+    role,
+    createdAt: Date.now(),
+    sessionId,
+    displayName: extra.displayName || `Mod-${sessionId.slice(0, 4)}`,
+    avatarSeed,
+    ...extra
+  })
   return token
 }
 
@@ -95,10 +155,34 @@ export function verifySession(token) {
   return s
 }
 
-// Token passed via URL (?t=...) or WS subprotocol/header. OBS Browser Source
-// uses the viewer token; the editor uses a session token after PIN login.
+export function getSession(token) {
+  return verifySession(token)
+}
+
 export function roleForToken(token) {
   if (token === secret.viewerToken) return 'viewer'
   const s = verifySession(token)
   return s ? s.role : null
+}
+
+export function checkLoginRateLimit(ip) {
+  const key = ip || 'unknown'
+  const now = Date.now()
+  let entry = loginAttempts.get(key)
+  if (!entry || now > entry.resetAt) {
+    entry = { count: 0, resetAt: now + LOGIN_WINDOW_MS }
+    loginAttempts.set(key, entry)
+  }
+  entry.count++
+  if (entry.count > LOGIN_MAX) {
+    return { ok: false, retryAfterMs: entry.resetAt - now }
+  }
+  return { ok: true }
+}
+
+export function tokenFromReq(req) {
+  const auth = req.headers.authorization || ''
+  if (auth.startsWith('Bearer ')) return auth.slice(7)
+  if (req.query?.t) return String(req.query.t)
+  return ''
 }

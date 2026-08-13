@@ -58,27 +58,48 @@ export function scaleAspect(t, factor, minSize = 16) {
 
 // Resize from a given handle keeping aspect ratio. dx,dy are deltas in stage px.
 // anchor is the handle being dragged (nw, ne, sw, se, n, e, s, w).
+// Corners: opposite corner fixed. Edges: opposite edge fixed; secondary axis
+// recentered so the box stays visually anchored on that edge.
 export function resizeAspect(t, anchor, dx, dy) {
-  // For aspect-locked resize, use the dominant axis.
-  const ratio = t.w / t.h
+  const ratio = (t.w > 0 && t.h > 0) ? t.w / t.h : 1
   let { x, y, w, h } = t
-  const dominant = Math.abs(dx) > Math.abs(dy) ? dx : dy
-  let delta = dominant
-  const left = anchor.includes('w')
-  const top = anchor.includes('n')
-  if (anchor === 'e' || anchor === 's') delta = dx + dy // single-axis handled below
-  // Simplified corner-driven resize:
-  if (anchor === 'se') { w = t.w + dx; h = w / ratio }
-  else if (anchor === 'nw') { w = t.w - dx; h = w / ratio; x = t.x + (t.w - w); y = t.y + (t.h - h) }
-  else if (anchor === 'ne') { w = t.w + dx; h = w / ratio; y = t.y + (t.h - h) }
-  else if (anchor === 'sw') { w = t.w - dx; h = w / ratio; x = t.x + (t.w - w) }
-  else {
-    // edge handles: free resize on one axis
-    if (anchor === 'e') w = t.w + dx
-    else if (anchor === 'w') { w = t.w - dx; x = t.x + dx }
-    else if (anchor === 's') h = t.h + dy
-    else if (anchor === 'n') { h = t.h - dy; y = t.y + dy }
+
+  if (anchor === 'se') {
+    w = t.w + dx
+    h = w / ratio
+  } else if (anchor === 'nw') {
+    w = t.w - dx
+    h = w / ratio
+    x = t.x + (t.w - w)
+    y = t.y + (t.h - h)
+  } else if (anchor === 'ne') {
+    w = t.w + dx
+    h = w / ratio
+    y = t.y + (t.h - h)
+  } else if (anchor === 'sw') {
+    w = t.w - dx
+    h = w / ratio
+    x = t.x + (t.w - w)
+  } else if (anchor === 'e') {
+    w = t.w + dx
+    h = w / ratio
+    y = t.y + (t.h - h) / 2
+  } else if (anchor === 'w') {
+    w = t.w - dx
+    h = w / ratio
+    x = t.x + (t.w - w)
+    y = t.y + (t.h - h) / 2
+  } else if (anchor === 's') {
+    h = t.h + dy
+    w = h * ratio
+    x = t.x + (t.w - w) / 2
+  } else if (anchor === 'n') {
+    h = t.h - dy
+    w = h * ratio
+    y = t.y + (t.h - h)
+    x = t.x + (t.w - w) / 2
   }
+
   w = Math.max(16, Math.round(w))
   h = Math.max(16, Math.round(h))
   return { ...t, x: Math.round(x), y: Math.round(y), w, h }

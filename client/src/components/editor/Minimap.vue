@@ -1,10 +1,15 @@
 <!--
-  Minimap.vue (M2)
-  A scaled-down view of the whole 1920x1080 stage showing all layers as rects
-  + a viewport rectangle for the current scroll position. Click to jump.
+  Minimap.vue — Fluent acrylic stage overview (editor chrome only).
 -->
 <template>
-  <div class="minimap" ref="root" @mousedown="onJump">
+  <div
+    class="minimap"
+    ref="root"
+    role="img"
+    :aria-label="t('canvas.minimap')"
+    :title="t('canvas.minimapHint')"
+    @mousedown.prevent="onPointerDown"
+  >
     <div class="mm-stage">
       <div
         v-for="l in rects"
@@ -22,48 +27,74 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useSceneStore } from '../../stores/scene.js'
 import { STAGE } from '@shared/schema.js'
+import { useI18n } from '@/i18n'
 
-const props = defineProps({ scale: Number, scroll: Object })
+const props = defineProps({
+  scale: Number,
+  scroll: Object,
+  /** Logical stage margin around 1920×1080 in the editor workspace (Canvas STAGE_MARGIN). */
+  stageMargin: { type: Number, default: 0 }
+})
 
 const scene = useSceneStore()
+const { t } = useI18n()
 const root = ref(null)
 
-// Minimap renders the stage at 160px wide.
 const MM_W = 160
 const mmScale = MM_W / STAGE.W
 
 const rects = computed(() =>
   scene.layers.map((l) => {
-    const t = l.transform
-    return { id: l.id, x: t.x * mmScale, y: t.y * mmScale, w: t.w * mmScale, h: t.h * mmScale }
+    const tr = l.transform
+    return { id: l.id, x: tr.x * mmScale, y: tr.y * mmScale, w: tr.w * mmScale, h: tr.h * mmScale }
   })
 )
 
 const vpStyle = computed(() => {
   const el = props.scroll
   if (!el) return { display: 'none' }
-  const x = el.scrollLeft / props.scale * mmScale
-  const y = el.scrollTop / props.scale * mmScale
+  void tick.value
+  const margin = props.stageMargin || 0
+  const x = (el.scrollLeft / props.scale - margin) * mmScale
+  const y = (el.scrollTop / props.scale - margin) * mmScale
   const w = el.clientWidth / props.scale * mmScale
   const h = el.clientHeight / props.scale * mmScale
   return { left: x + 'px', top: y + 'px', width: w + 'px', height: h + 'px' }
 })
 
-function onJump(e) {
+function jumpTo(e) {
   const el = props.scroll
   const r = root.value.getBoundingClientRect()
-  const x = (e.clientX - r.left) / mmScale * props.scale - el.clientWidth / 2
-  const y = (e.clientY - r.top) / mmScale * props.scale - el.clientHeight / 2
-  el.scrollTo({ left: x, top: y, behavior: 'smooth' })
+  const margin = props.stageMargin || 0
+  const x = ((e.clientX - r.left) / mmScale + margin) * props.scale - el.clientWidth / 2
+  const y = ((e.clientY - r.top) / mmScale + margin) * props.scale - el.clientHeight / 2
+  el.scrollTo({ left: x, top: y })
 }
 
-// Re-render viewport rect on scroll.
+function onPointerDown(e) {
+  if (e.button !== 0) return
+  jumpTo(e)
+  const move = (ev) => jumpTo(ev)
+  const up = () => {
+    window.removeEventListener('mousemove', move)
+    window.removeEventListener('mouseup', up)
+  }
+  window.addEventListener('mousemove', move)
+  window.addEventListener('mouseup', up)
+}
+
 let raf = 0
+let onScroll = null
 onMounted(() => {
   const el = props.scroll
   if (!el) return
-  const upd = () => { raf = 0; root.value && (root.value._f = Date.now()) /* trigger reactivity */ ; tick.value++ }
-  el.addEventListener('scroll', () => { if (!raf) raf = requestAnimationFrame(upd) })
+  const upd = () => { raf = 0; tick.value++ }
+  onScroll = () => { if (!raf) raf = requestAnimationFrame(upd) }
+  el.addEventListener('scroll', onScroll)
+})
+onBeforeUnmount(() => {
+  props.scroll?.removeEventListener?.('scroll', onScroll)
+  if (raf) cancelAnimationFrame(raf)
 })
 const tick = ref(0)
 </script>
@@ -74,15 +105,47 @@ const tick = ref(0)
   right: 12px;
   top: 12px;
   width: 160px;
-  background: var(--panel);
-  border: 1px solid var(--border);
+  background: var(--fluent-acrylic);
+  border: 1px solid var(--fluent-stroke);
   border-radius: 8px;
   padding: 6px;
-  box-shadow: var(--shadow);
+  box-shadow: var(--fluent-elevation);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   z-index: 20;
+  cursor: grab;
+  transition: border-color var(--fluent-duration-fast) var(--fluent-ease);
 }
-.mm-stage { position: relative; width: 148px; height: 83px; background: #000; border-radius: 3px; overflow: hidden; }
-.mm-layer { position: absolute; background: rgba(96,165,250,.6); border: 1px solid rgba(96,165,250,1); }
-.mm-layer.sel { background: rgba(239,68,68,.8); border-color: #fff; }
-.mm-viewport { position: absolute; border: 1.5px solid #fff; pointer-events: none; }
+.minimap:hover { border-color: color-mix(in srgb, var(--fluent-accent) 45%, var(--fluent-stroke)); }
+.minimap:active { cursor: grabbing; }
+.mm-stage {
+  position: relative;
+  width: 148px;
+  height: 83px;
+  background: #0a0a0b;
+  border: 1px solid var(--fluent-stroke);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.mm-layer {
+  position: absolute;
+  background: color-mix(in srgb, var(--fluent-accent) 45%, transparent);
+  border: 1px solid color-mix(in srgb, var(--fluent-accent) 80%, transparent);
+  border-radius: 1px;
+  box-sizing: border-box;
+}
+.mm-layer.sel {
+  background: color-mix(in srgb, var(--fluent-accent) 75%, transparent);
+  border-color: #fff;
+  box-shadow: 0 0 0 1px var(--fluent-accent);
+  z-index: 2;
+}
+.mm-viewport {
+  position: absolute;
+  border: 1.5px solid #fff;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--fluent-accent) 50%, transparent);
+  background: color-mix(in srgb, var(--fluent-accent) 12%, transparent);
+  pointer-events: none;
+  z-index: 3;
+}
 </style>

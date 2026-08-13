@@ -6,21 +6,28 @@
   what the stream gets.
 
   Applies video/audio playback settings (speed/volume/fragment-loop) to the
-  live media elements, and mirrors transport commands (play/pause/seek) from
-  the moderator to the OBS stream via the media-ctrl channel.
+  live media elements. Video/audio transport mirrors via media-ctrl; YouTube
+  uses the yt-timeline protocol (serverClock / moderatorMaster) or legacy
+  media-ctrl when syncMode is legacy.
 
   Emits 'select' (id) and 'edit-text' (id) so the editor Canvas can wire
   click-to-select and double-click-to-edit-text. OBS mode ignores both.
 -->
 <template>
   <div class="stage" :style="stageStyle">
-    <div
+    <LayerContextMenu
       v-for="layer in renderable"
       :key="layer.id"
+      :layer="layer"
+      :disabled="mode !== 'editor'"
+      :on-fit-aspect="mode === 'editor' ? menuFitAspect : null"
+    >
+    <div
       class="layer"
-      :class="{ locked: layer.locked, interactive: mode === 'editor' }"
+      :class="{ locked: layer.locked, interactive: mode === 'editor', sel: mode === 'editor' && scene.selectedId === layer.id }"
       :style="layerStyle(layer)"
-      @mousedown.stop="mode === 'editor' && emit('select', layer.id)"
+      @mousedown.stop="mode === 'editor' && onLayerMouseDown($event, layer.id)"
+      @contextmenu.stop="mode === 'editor' && emit('select', layer.id)"
       @dblclick.stop="mode === 'editor' && layer.type === 'text' && emit('edit-text', layer.id)"
     >
       <!-- IMAGE / GIF / EMOTE (emotes are plain <img> — static or animated webp/gif) -->
@@ -69,12 +76,19 @@
              controls it (play/pause/seek/volume); OBS just renders it. -->
         <div class="audio-player">
           <div class="audio-note-row">
-            <span class="audio-note">♪</span>
+            <Music class="audio-note h-4 w-4" aria-hidden="true" />
             <span class="audio-name" :title="layer.name">{{ layer.name }}</span>
           </div>
           <div class="audio-controls-row">
-            <button v-if="mode === 'editor'" class="ap-btn" :title="audioState[layer.id]?.playing ? 'Pause' : 'Play'" @click.stop="toggleAudio(layer)">
-              {{ audioState[layer.id]?.playing ? '❚❚' : '▶' }}
+            <button
+              v-if="mode === 'editor'"
+              type="button"
+              class="ap-btn"
+              :title="audioState[layer.id]?.playing ? 'Pause' : 'Play'"
+              @click.stop="toggleAudio(layer)"
+            >
+              <Pause v-if="audioState[layer.id]?.playing" class="h-3.5 w-3.5" />
+              <Play v-else class="h-3.5 w-3.5" />
             </button>
             <span class="ap-time">{{ fmt(audioState[layer.id]?.current || 0) }}</span>
             <div v-if="mode === 'editor'" class="ap-seek" @click.stop="onSeek($event, layer)">
@@ -86,24 +100,35 @@
             <span class="ap-time muted">{{ fmt(audioState[layer.id]?.duration || 0) }}</span>
           </div>
           <div v-if="mode === 'editor'" class="audio-vol-row">
-            <span class="ap-vol-icon">🔊</span>
+            <Volume2 class="ap-vol-icon h-3.5 w-3.5" aria-hidden="true" />
             <input type="range" class="ap-vol" min="0" max="1" step="0.01"
                    :value="layer.audio.volume" @click.stop @input="onVol(layer, +$event.target.value)" />
           </div>
         </div>
       </div>
       <!-- YOUTUBE (video) -->
-      <div v-else-if="layer.type === 'youtube'" class="yt-body" :style="fillStyle">
+      <div
+        v-else-if="layer.type === 'youtube'"
+        class="yt-body"
+        :class="{ 'yt-obs-clean': mode === 'obs' }"
+        :style="fillStyle"
+      >
         <iframe
           v-if="ytSrc(layer)"
           :ref="(el) => bindYoutube(layer.id, el)"
           :src="ytSrc(layer)"
           frameborder="0"
           allow="autoplay; encrypted-media; picture-in-picture"
-          allowfullscreen
+          :allowfullscreen="mode === 'editor'"
           @load="onYtLoad(layer)"
         />
-        <div v-else class="yt-placeholder">YouTube: {{ layer.name }}</div>
+        <!-- OBS: cover YouTube chrome (title / big play / end screen) until live playback -->
+        <div
+          v-if="mode === 'obs' && !ytObsLive(layer.id)"
+          class="yt-obs-mask"
+          aria-hidden="true"
+        />
+        <div v-else-if="mode === 'editor' && !ytSrc(layer)" class="yt-placeholder">YouTube: {{ layer.name }}</div>
       </div>
       <!-- TEXT -->
       <div
@@ -112,18 +137,133 @@
         :style="textStyle(layer)"
       >{{ layer.text?.content || '' }}</div>
 
+      <!-- TIMER (countdown) -->
+      <div
+        v-else-if="layer.type === 'timer'"
+        class="text-body"
+        :style="textStyle(layer)"
+      >{{ formatTimer(layer) }}</div>
+
+      <!-- COUNTER -->
+      <div
+        v-else-if="layer.type === 'counter'"
+        class="text-body"
+        :style="textStyle(layer)"
+      >{{ layer.counterValue ?? 0 }}</div>
+
+      <!-- BROWSER / CHATIS
+           OBS Studio uses CEF top-level documents (not iframes). In Electron we
+           mirror that with <webview>. In Chrome/dev (and OBS overlay page) we
+           use iframe + gateway for XFO hosts. -->
+      <div v-else-if="layer.type === 'browser' || layer.type === 'chatis'" class="browser-body" :style="fillStyle(layer)">
+        <webview
+          v-if="useWebview && directBrowserUrl(layer)"
+          :ref="(el) => bindBrowserFrame(layer, el)"
+          :key="'wv-' + browserFrameKey(layer)"
+          class="browser-frame"
+          :src="directBrowserUrl(layer)"
+          :style="{ width: '100%', height: '100%' }"
+          allowpopups
+          webpreferences="contextIsolation=yes, javascript=yes, webSecurity=yes"
+          @did-finish-load="onBrowserLoad(layer, $event)"
+          @dom-ready="onWebviewReady(layer, $event)"
+        />
+        <iframe
+          v-else-if="safeBrowserSrc(layer) !== 'about:blank'"
+          :ref="(el) => bindBrowserFrame(layer, el)"
+          :key="browserFrameKey(layer)"
+          class="browser-frame"
+          :src="safeBrowserSrc(layer)"
+          :title="layer.name"
+          frameborder="0"
+          scrolling="no"
+          referrerpolicy="strict-origin-when-cross-origin"
+          loading="eager"
+          allow="autoplay; fullscreen; clipboard-write"
+          @load="onBrowserLoad(layer, $event)"
+        />
+        <div v-else class="browser-empty">No URL</div>
+        <div v-if="mode === 'editor'" class="browser-shield" aria-hidden="true"></div>
+        <div v-if="mode === 'editor'" class="browser-badge">{{ browserBadge(layer) }}{{ useWebview ? ' · CEF' : '' }}</div>
+      </div>
+
+      <!-- MULTI BROWSER SOURCE (several widgets + exclusive queue) -->
+      <div
+        v-else-if="layer.type === 'multiBrowser'"
+        class="browser-body multi-browser"
+        :class="{ 'is-locked': multiLocked(layer.id) }"
+        :style="fillStyle(layer)"
+      >
+        <template v-for="(u, i) in multiDisplayUrls(layer)" :key="layer.id + '-' + i + '-' + (layer.multiBrowser?.refreshKey || 0)">
+          <webview
+            v-if="useWebview"
+            :ref="(el) => bindMultiFrame(layer.id, i, el)"
+            class="browser-frame multi-frame"
+            :class="multiFrameClass(layer.id, i)"
+            :src="u"
+            :style="{ width: '100%', height: '100%' }"
+            allowpopups
+            webpreferences="contextIsolation=yes, javascript=yes, webSecurity=yes"
+            @dom-ready="onMultiReady(layer, i, $event)"
+            @media-started-playing="onMultiMediaStart(layer, i)"
+            @media-paused="onMultiMediaStop(layer, i)"
+          />
+          <iframe
+            v-else
+            :ref="(el) => bindMultiFrame(layer.id, i, el)"
+            class="browser-frame multi-frame"
+            :class="multiFrameClass(layer.id, i)"
+            :src="u"
+            :title="(layer.name || 'Multi') + ' #' + (i + 1)"
+            frameborder="0"
+            scrolling="no"
+            referrerpolicy="strict-origin-when-cross-origin"
+            loading="eager"
+            allow="autoplay; fullscreen; clipboard-write"
+            @load="onMultiReady(layer, i, $event)"
+          />
+        </template>
+        <div v-if="!multiDisplayUrls(layer).length" class="browser-empty">No URLs</div>
+        <div v-if="mode === 'editor'" class="browser-shield" aria-hidden="true"></div>
+        <div v-if="mode === 'editor'" class="browser-badge">
+          Multi Browser · {{ multiDisplayUrls(layer).length }}
+          <template v-if="layer.multiBrowser?.queueEnabled !== false">
+            · Q{{ multiPendingCount(layer.id) }}
+          </template>
+          {{ useWebview ? ' · CEF' : '' }}
+        </div>
+      </div>
+
       <!-- TTL countdown badge (editor only) -->
       <div v-if="mode === 'editor' && ttlRemaining[layer.id] > 0" class="ttl-badge">⏱ {{ fmt(ttlRemaining[layer.id]) }}</div>
     </div>
+    </LayerContextMenu>
   </div>
 </template>
 
 <script setup>
-import { computed, reactive, watch } from 'vue'
+import { computed, reactive, watch, onUnmounted, onMounted, ref } from 'vue'
+import { Music, Play, Pause, Volume2 } from '@lucide/vue'
+import LayerContextMenu from '@/components/shell/LayerContextMenu.vue'
+import { isPrimaryButton } from '@/features/safeContextMenu.js'
 import { STAGE } from '@shared/schema.js'
 import { ytCommand, ytListen, onYtMessage, ytStateInfo, ytPreload } from '../features/youtube.js'
+import {
+  expectedTime,
+  applyTimeline,
+  correctToExpected,
+  normalizeSyncMode,
+  ytEmbedOrigin,
+  YT_CORRECT_INTERVAL_MS,
+  YT_HEARTBEAT_MS
+} from '../features/ytTimeline.js'
+import { browserCfgOf, browserSrc, multiBrowserUrls, multiBrowserDirectUrls, pushBrowserAudio } from '../features/browserLayer.js'
+import { buildChatisUrl, defaultChatisConfig } from '@shared/chatis.js'
+import { createMultiQueue } from '../features/multiBrowserQueue.js'
+import { useSceneStore } from '../stores/scene.js'
 
 const emit = defineEmits(['select', 'edit-text', 'fit-aspect', 'media-state', 'audio-ctrl'])
+const scene = useSceneStore()
 
 const props = defineProps({
   layers: { type: Array, default: () => [] },
@@ -131,9 +271,29 @@ const props = defineProps({
   scale: { type: Number, default: 1 },
   ttlMap: { type: Object, default: () => ({}) }, // id -> seconds remaining (editor only)
   // Latest transient transport command per layer id: { playing?, seek?, nonce }.
-  // Applied to the live <video>/<audio> in BOTH modes so OBS mirrors transport.
+  // Applied to <video>/<audio> and to YouTube only in legacy syncMode.
   mediaCtrl: { type: Object, default: () => ({}) }
 })
+
+/** LMB selects; RMB is reserved for LayerContextMenu (no move-start side effects). */
+function onLayerMouseDown(e, id) {
+  if (!isPrimaryButton(e)) return
+  emit('select', id)
+}
+
+/** Natural size cache for manual "Fit aspect" from context menu. */
+const natSizes = new Map()
+
+function menuFitAspect(layer) {
+  if (!layer?.id) return
+  const cached = natSizes.get(layer.id)
+  const v = videoEls.get(layer.id)
+  const natW = v?.videoWidth || cached?.w || 0
+  const natH = v?.videoHeight || cached?.h || 0
+  if (!natW || !natH) return
+  layer._aspectFit = false
+  emit('fit-aspect', { id: layer.id, natW, natH, force: true })
+}
 
 // All layers that the current mode should consider. In editor mode, layers
 // hidden via the eye icon are excluded. In OBS mode, ALL layers are rendered
@@ -160,6 +320,44 @@ function fillStyle(layer) {
 }
 
 const ttlRemaining = computed(() => props.ttlMap || {})
+
+// Tick for live timer countdowns (synced via layer.timerEndsAt).
+const nowMs = ref(Date.now())
+let timerTickId = null
+function syncTimerTick() {
+  const needs = renderable.value.some((l) => l.type === 'timer' && l.timerEndsAt)
+  if (needs && !timerTickId) {
+    timerTickId = setInterval(() => { nowMs.value = Date.now() }, 250)
+  } else if (!needs && timerTickId) {
+    clearInterval(timerTickId)
+    timerTickId = null
+  }
+}
+watch(
+  () => renderable.value.map((l) => (l.type === 'timer' ? l.timerEndsAt : null)),
+  syncTimerTick,
+  { immediate: true }
+)
+onUnmounted(() => {
+  if (timerTickId) {
+    clearInterval(timerTickId)
+    timerTickId = null
+  }
+})
+
+function formatTimer(layer) {
+  let secs
+  if (layer.timerEndsAt) {
+    // Depend on nowMs so the display updates while counting down.
+    void nowMs.value
+    secs = Math.max(0, Math.ceil((layer.timerEndsAt - nowMs.value) / 1000))
+  } else {
+    secs = Math.max(0, Math.floor(Number(layer.timerSeconds) || 0))
+  }
+  const m = Math.floor(secs / 60)
+  const s = secs % 60
+  return `${m}:${String(s).padStart(2, '0')}`
+}
 
 function layerStyle(layer) {
   const t = layer.transform || {}
@@ -236,12 +434,13 @@ function withOpacity(hex, opacity) {
 }
 
 // --- YouTube embed URL -----------------------------------------------------
-// IMPORTANT: transport is driven by the shared media-ctrl channel (play/pause/
-// seek), NOT by autoplay=1. Browsers block sound-on autoplay, which left the
-// editor preview stuck on "ready for playback" while OBS played — and the two
-// drifted apart. With autoplay off everywhere, both clients start paused and
-// only move when the moderator issues a transport command. enablejsapi=1 opens
-// the postMessage command channel ytCommand() uses.
+// Transport is driven by yt-timeline (serverClock / moderatorMaster) or legacy
+// media-ctrl. Native chrome is always off so only the app player can seek.
+// enablejsapi=1 + origin open the postMessage command channel.
+function ytSyncModeOf(layer) {
+  return normalizeSyncMode(layer?.youtube?.syncMode)
+}
+
 function ytSrc(layer) {
   if (!layer.src) return ''
   const y = layer.youtube || {}
@@ -249,27 +448,17 @@ function ytSrc(layer) {
     enablejsapi: '1',
     rel: '0',
     modestbranding: '1',
-    playsinline: '1'
+    playsinline: '1',
+    controls: '0',
+    showinfo: '0',
+    iv_load_policy: '3',
+    cc_load_policy: '0',
+    disablekb: '1',
+    fs: '0',
+    autoplay: '0'
   })
-  if (props.mode === 'obs') {
-    // Clean video for the stream: no controls, no branding, no annotations.
-    params.set('controls', '0')
-    params.set('showinfo', '0')
-    params.set('iv_load_policy', '3')
-    params.set('disablekb', '1')
-    params.set('fs', '0')
-    params.set('modestbranding', '1')
-  } else {
-    // Editor: full player chrome so the moderator can scrub/seek/pause.
-    params.set('controls', '1')
-  }
-  // Keep both clients paused at the start so the moderator decides when to
-  // roll. Mute/volume/speed are deliberately NOT in the URL: they'd change the
-  // src string on every toggle, which reloads the iframe and restarts playback.
-  // Instead they're pushed live via postMessage from applyYtSettings (on ready
-  // and on every change), so mute/unmute applies in place — the video keeps
-  // playing uninterrupted, only its audio flips.
-  params.set('autoplay', '0')
+  const origin = ytEmbedOrigin()
+  if (origin) params.set('origin', origin)
   if (y.startAt) params.set('start', String(Math.floor(y.startAt)))
   if (y.playlist && y.playlist.length) {
     params.set('listType', 'playlist')
@@ -279,6 +468,269 @@ function ytSrc(layer) {
   const id = m ? m[1] : layer.src
   return `https://www.youtube.com/embed/${id}?${params.toString()}`
 }
+
+/** OBS shows the iframe only while the player is actually playing (no YT UI). */
+function ytObsLive(id) {
+  const st = ytState[id]
+  if (st?.playing) return true
+  const tl = scene.ytTimeline[id]
+  return !!(tl && tl.playing && !tl.stop)
+}
+
+// browserSrc imported from features/browserLayer.js
+/** Electron webview ≈ OBS CEF BrowserSource (top-level guest, ignores XFO). */
+const useWebview = typeof navigator !== 'undefined' && /Electron/i.test(navigator.userAgent || '')
+
+function safeBrowserSrc(layer) {
+  try { return browserSrc(layer) || 'about:blank' } catch (_) { return 'about:blank' }
+}
+function multiDisplayUrls(layer) {
+  try {
+    return useWebview ? multiBrowserDirectUrls(layer) : multiBrowserUrls(layer)
+  } catch (_) { return [] }
+}
+
+// --- Multi Browser Source exclusive queue ---------------------------------
+const multiQueues = new Map()
+const multiActive = reactive({})
+const multiPending = reactive({})
+const multiFrames = new Map() // `${layerId}:${i}` -> el
+let multiPollTimer = null
+
+function multiKey(layerId, i) { return `${layerId}:${i}` }
+
+function ensureMultiQueue(layer) {
+  const id = layer.id
+  const cfg = layer.multiBrowser || {}
+  let q = multiQueues.get(id)
+  if (!q) {
+    q = createMultiQueue({
+      enabled: cfg.queueEnabled !== false,
+      idleMs: cfg.idleMs,
+      minHoldMs: cfg.minHoldMs,
+      maxHoldMs: cfg.maxHoldMs,
+      onChange: (st) => {
+        multiActive[id] = st.active
+        multiPending[id] = st.pending.length
+        applyMultiAudio(id)
+      }
+    })
+    multiQueues.set(id, q)
+  } else {
+    q.setEnabled(cfg.queueEnabled !== false)
+    q.updateTiming({ idleMs: cfg.idleMs, minHoldMs: cfg.minHoldMs, maxHoldMs: cfg.maxHoldMs })
+  }
+  return q
+}
+
+function multiLocked(layerId) {
+  return multiActive[layerId] != null
+}
+function multiPendingCount(layerId) {
+  return multiPending[layerId] || 0
+}
+function multiFrameClass(layerId, i) {
+  const active = multiActive[layerId]
+  if (active == null) return {}
+  return {
+    'is-active': active === i,
+    'is-waiting': active !== i
+  }
+}
+
+function bindMultiFrame(layerId, i, el) {
+  const k = multiKey(layerId, i)
+  if (el) multiFrames.set(k, el)
+  else multiFrames.delete(k)
+}
+
+function applyMultiAudio(layerId) {
+  const active = multiActive[layerId]
+  const queueOn = (() => {
+    const layer = props.layers.find((l) => l.id === layerId)
+    return layer?.multiBrowser?.queueEnabled !== false
+  })()
+  for (const [k, el] of multiFrames) {
+    if (!k.startsWith(layerId + ':')) continue
+    const i = Number(k.slice(layerId.length + 1))
+    if (!el || typeof el.setAudioMuted !== 'function') continue
+    try {
+      if (!queueOn || active == null) el.setAudioMuted(false)
+      else el.setAudioMuted(active !== i)
+    } catch (_) {}
+  }
+}
+
+const BROWSER_OVERFLOW_CSS =
+  'html,body{overflow:hidden!important;margin:0!important;}' +
+  'html::-webkit-scrollbar,body::-webkit-scrollbar,*::-webkit-scrollbar{width:0!important;height:0!important;display:none!important;}'
+
+function onMultiReady(layer, i, ev) {
+  ensureMultiQueue(layer)
+  const el = ev?.target || multiFrames.get(multiKey(layer.id, i))
+  if (el) bindMultiFrame(layer.id, i, el)
+  try {
+    if (el && typeof el.insertCSS === 'function') el.insertCSS(BROWSER_OVERFLOW_CSS)
+  } catch (_) {}
+  applyMultiAudio(layer.id)
+  startMultiPoll()
+}
+
+function onMultiMediaStart(layer, i) {
+  const q = ensureMultiQueue(layer)
+  q.onActivity(i)
+  applyMultiAudio(layer.id)
+}
+
+function onMultiMediaStop(layer, i) {
+  ensureMultiQueue(layer).onIdle(i)
+}
+
+async function probeMultiActivity(el) {
+  if (!el) return false
+  try {
+    if (typeof el.executeJavaScript === 'function') {
+      return !!(await el.executeJavaScript(
+        `(() => { try {
+          const media = [...document.querySelectorAll('audio,video')];
+          if (media.some(m => !m.paused && !m.ended && m.currentTime > 0)) return true;
+          const anim = document.getAnimations ? document.getAnimations() : [];
+          if (anim.some(a => a.playState === 'running' && (a.effect?.getTiming?.()?.duration || 0) > 200)) return true;
+          return false;
+        } catch (e) { return false } })()`
+      ))
+    }
+  } catch (_) {}
+  return false
+}
+
+function startMultiPoll() {
+  if (multiPollTimer) return
+  multiPollTimer = setInterval(async () => {
+    for (const layer of props.layers) {
+      if (layer.type !== 'multiBrowser') continue
+      if (layer.multiBrowser?.queueEnabled === false) continue
+      const q = ensureMultiQueue(layer)
+      const urls = multiDisplayUrls(layer)
+      for (let i = 0; i < urls.length; i++) {
+        const el = multiFrames.get(multiKey(layer.id, i))
+        const busy = await probeMultiActivity(el)
+        if (busy) q.onActivity(i)
+        else if (q.getActive() === i) q.onIdle(i)
+      }
+      applyMultiAudio(layer.id)
+    }
+  }, 700)
+}
+
+watch(
+  () => props.layers.filter((l) => l.type === 'multiBrowser').map((l) => [
+    l.id,
+    l.multiBrowser?.queueEnabled,
+    l.multiBrowser?.idleMs,
+    l.multiBrowser?.minHoldMs,
+    l.multiBrowser?.maxHoldMs,
+    (l.multiBrowser?.urls || []).join('\n')
+  ]),
+  () => {
+    const ids = new Set()
+    for (const l of props.layers) {
+      if (l.type !== 'multiBrowser') continue
+      ids.add(l.id)
+      ensureMultiQueue(l)
+    }
+    for (const id of [...multiQueues.keys()]) {
+      if (!ids.has(id)) {
+        multiQueues.get(id)?.destroy()
+        multiQueues.delete(id)
+        delete multiActive[id]
+        delete multiPending[id]
+      }
+    }
+    startMultiPoll()
+  },
+  { immediate: true, deep: true }
+)
+
+onUnmounted(() => {
+  if (multiPollTimer) { clearInterval(multiPollTimer); multiPollTimer = null }
+  for (const q of multiQueues.values()) q.destroy()
+  multiQueues.clear()
+})
+
+function browserFrameKey(layer) {
+  const cfg = browserCfgOf(layer)
+  return `${layer.id}-${cfg.refreshKey || 0}`
+}
+function browserBadge(layer) {
+  const cfg = browserCfgOf(layer)
+  if (layer.type === 'chatis' || cfg.source === 'chatis') return 'ChatIS'
+  return 'Browser'
+}
+
+function directBrowserUrl(layer) {
+  const cfg = browserCfgOf(layer)
+  let url = cfg.url || layer.src || ''
+  if (!url && layer.type === 'chatis' && cfg.channel) {
+    url = buildChatisUrl({
+      ...defaultChatisConfig(cfg.channel),
+      ...(cfg.chatisParams || {})
+    })
+  }
+  url = String(url || '').trim()
+  if (!/^https?:\/\//i.test(url)) return ''
+  if (cfg.refreshKey) {
+    try {
+      const u = new URL(url)
+      u.searchParams.set('_omo_r', String(cfg.refreshKey))
+      return u.toString()
+    } catch (_) { return url }
+  }
+  return url
+}
+
+function onWebviewReady(layer, ev) {
+  const el = ev?.target || browserFrames.get(layer.id)
+  const cfg = browserCfgOf(layer)
+  if (!el) return
+  try {
+    if (typeof el.insertCSS === 'function') {
+      el.insertCSS(BROWSER_OVERFLOW_CSS)
+      if (cfg.customCss) el.insertCSS(String(cfg.customCss))
+    }
+  } catch (_) {}
+  try {
+    if (cfg.controlAudioViaObs && typeof el.setAudioMuted === 'function') {
+      el.setAudioMuted(!!cfg.muted || (typeof cfg.volume === 'number' && cfg.volume <= 0))
+    }
+  } catch (_) {}
+}
+
+const browserFrames = new Map()
+function bindBrowserFrame(layer, el) {
+  if (!layer?.id) return
+  if (el) browserFrames.set(layer.id, el)
+  else browserFrames.delete(layer.id)
+}
+function onBrowserLoad(layer, ev) {
+  const cfg = browserCfgOf(layer)
+  pushBrowserAudio(ev?.target || browserFrames.get(layer.id), cfg)
+}
+
+watch(
+  () => props.layers.map((l) => {
+    if (l.type !== 'browser' && l.type !== 'chatis') return null
+    const c = browserCfgOf(l)
+    return [l.id, c.volume, c.muted, c.controlAudioViaObs]
+  }),
+  () => {
+    for (const l of props.layers) {
+      if (l.type !== 'browser' && l.type !== 'chatis') continue
+      pushBrowserAudio(browserFrames.get(l.id), browserCfgOf(l))
+    }
+  },
+  { deep: true }
+)
 
 // --- Media element management ----------------------------------------------
 const videoEls = reactive(new Map())   // id -> HTMLVideoElement
@@ -297,6 +749,9 @@ const ytNonce = reactive({})
 // it here and replay it once onReady fires.
 const ytReady = reactive({})           // id -> boolean
 const ytPending = reactive({})         // id -> { playing?, seek?, nonce } | null
+const ytPendingTimeline = reactive({}) // id -> timeline snapshot | null
+const ytTimelineNonce = reactive({})   // id -> last applied timeline.nonce
+const ytLastForceSeekAt = reactive({}) // id -> ms epoch of last hard seek
 // Tracks per-id whether we've already buffered the opening segment. The IFrame
 // player only fetches data once playback starts, so a brand-new embed left
 // paused has nothing buffered — and the moderator's first Play stutters while
@@ -304,6 +759,7 @@ const ytPending = reactive({})         // id -> { playing?, seek?, nonce } | nul
 // and pause it as soon as it starts streaming (state 3/1). ytBuffered guards
 // against re-buffering on every subsequent onReady/state delivery.
 const ytBuffered = reactive({})        // id -> boolean
+const ytAutoHideDone = reactive({})    // id -> bool (once per ended cycle)
 
 function bindVideo(id, el) { if (el) videoEls.set(id, el) }
 function bindAudio(id, el) { if (el) audioEls.set(id, el) }
@@ -315,7 +771,10 @@ function bindYoutube(id, el) {
     if (ytEls.get(id) !== el) {
       ytReady[id] = false
       ytPending[id] = null
+      ytPendingTimeline[id] = null
       ytBuffered[id] = false
+      ytTimelineNonce[id] = null
+      ytAutoHideDone[id] = false
     }
     ytEls.set(id, el)
     // (Re)establish the listening handshake for this player; the @load handler
@@ -326,8 +785,19 @@ function bindYoutube(id, el) {
     ytEls.delete(id)
     ytReady[id] = false
     ytPending[id] = null
+    ytPendingTimeline[id] = null
     ytBuffered[id] = false
+    ytTimelineNonce[id] = null
   }
+}
+
+function layerById(id) {
+  return props.layers.find((x) => x.id === id)
+}
+
+function isLegacyYt(id) {
+  const l = layerById(id)
+  return !l || l.type !== 'youtube' || ytSyncModeOf(l) === 'legacy'
 }
 
 // Apply a transport command to a YouTube embed right now. Returns true if it
@@ -369,6 +839,24 @@ function applyYtCommand(id, cmd) {
   return true
 }
 
+function applyYtTimeline(id, timeline) {
+  const el = ytEls.get(id)
+  if (!el || !timeline) return false
+  if (!ytReady[id]) {
+    ytPendingTimeline[id] = timeline
+    return false
+  }
+  ytBuffered[id] = true
+  ytTimelineNonce[id] = timeline.nonce
+  const exp = expectedTime(timeline)
+  applyTimeline(el, timeline, { ready: true })
+  if (timeline.forceSeek || timeline.stop) ytLastForceSeekAt[id] = Date.now()
+  ensureYt(id).playing = !!timeline.playing && !timeline.stop
+  ensureYt(id).current = timeline.forceSeek || timeline.stop ? exp : (ytState[id]?.current ?? exp)
+  pushMediaState(id, { playing: !!timeline.playing && !timeline.stop, current: ensureYt(id).current })
+  return true
+}
+
 // Single global listener for YT state deliveries. Each inbound message names
 // an info object we match back to its iframe (and thus its layer id).
 onYtMessage((source, d) => {
@@ -378,6 +866,14 @@ onYtMessage((source, d) => {
     ytReady[id] = true
     // Push the layer's persisted audio settings (mute/volume) to the embed.
     applyYtSettings(id)
+    // Prefer authoritative timeline (serverClock / moderatorMaster).
+    const pendingTl = ytPendingTimeline[id] || scene.ytTimeline[id]
+    if (pendingTl && !isLegacyYt(id)) {
+      ytPendingTimeline[id] = null
+      applyYtTimeline(id, pendingTl)
+      ytBuffered[id] = true
+      return
+    }
     // OBS auto-plays despite autoplay=0, so the moderator and OBS drift. Force
     // the player to the moderator's last intent: start PAUSED unless a Play
     // command arrived while we were still loading — in which case honor it.
@@ -427,14 +923,27 @@ onYtMessage((source, d) => {
       st.playing = info.playing
       pushMediaState(id, { playing: info.playing })
     }
-    if (info.ended) pushMediaState(id, { playing: false })
+    if (info.ended) {
+      pushMediaState(id, { playing: false })
+      handleYtEnded(id)
+    } else {
+      ytAutoHideDone[id] = false
+    }
   } else if (d.event === 'infoDelivery') {
     const id = idForYtSource(source)
     if (id == null) return
     const info = d.info || {}
     if (info.currentTime != null) {
       ensureYt(id).current = info.currentTime
-      pushMediaState(id, { current: info.currentTime })
+      // In clock modes the UI prefers expected time; still keep raw for correction.
+      if (isLegacyYt(id) || props.mode === 'editor') {
+        const tl = scene.ytTimeline[id]
+        if (tl && !isLegacyYt(id)) {
+          pushMediaState(id, { current: expectedTime(tl) })
+        } else {
+          pushMediaState(id, { current: info.currentTime })
+        }
+      }
     }
     if (info.duration != null) {
       ensureYt(id).duration = info.duration
@@ -447,6 +956,7 @@ onYtMessage((source, d) => {
         st.playing = si.playing
         pushMediaState(id, { playing: si.playing })
       }
+      if (si.ended) handleYtEnded(id)
     }
   }
 })
@@ -466,7 +976,7 @@ function ensureYt(id) {
 // (newly added YouTube videos play back smoothly from the first Play) but can
 // be turned off per-layer via the youtube.preload flag. Buffered once per load.
 function ytWantsPreload(id) {
-  const l = props.layers.find((x) => x.id === id)
+  const l = layerById(id)
   return !!l && (l.youtube?.preload !== false)
 }
 function onYtLoad(layer) {
@@ -476,13 +986,28 @@ function onYtLoad(layer) {
   // Settings can't be pushed until onReady (the player would drop them), but
   // re-listening here covers a late @load that missed the initial handshake.
 }
+
+function handleYtEnded(id) {
+  if (ytAutoHideDone[id]) return
+  const l = layerById(id)
+  if (!l || l.type !== 'youtube' || !l.youtube?.autoHide) return
+  if (props.mode !== 'editor') return
+  ytAutoHideDone[id] = true
+  if (l.audienceVisible !== false) {
+    scene.updateLayer(id, { audienceVisible: false }, { optimistic: true })
+  }
+}
+
 // Push the layer's persisted video settings (mute/volume/speed) to the embed.
+// Editor previewAudio=muted forces mute on the canvas only; OBS uses layer.video.
 function applyYtSettings(id) {
   const el = ytEls.get(id)
-  const l = props.layers.find((x) => x.id === id)
+  const l = layerById(id)
   if (!el || !l) return
   const v = l.video || {}
-  if (v.muted) ytCommand(el, 'mute')
+  const previewMuted = props.mode === 'editor' && (l.youtube?.previewAudio !== 'sound')
+  const muted = previewMuted || !!v.muted
+  if (muted) ytCommand(el, 'mute')
   else { ytCommand(el, 'unMute'); ytCommand(el, 'setVolume', [Math.round((v.volume != null ? v.volume : 1) * 100)]) }
   // Playback rate. setPlaybackRate only sticks once the player is ready, which
   // is why this is called from onReady as well as the change watcher.
@@ -519,17 +1044,14 @@ watch(
   { deep: true, flush: 'post' }
 )
 
-// --- Media transport sync (video + audio + youtube) ------------------------
+// --- Media transport sync (video + audio + youtube legacy) -----------------
 // Watch the latest command per id and apply it to the live element in BOTH
 // editor and OBS mode. The nonce lets a repeat (e.g. seek 0 twice) re-fire
 // even though the patch object is otherwise identical. State readouts are
 // pushed back to the parent via 'media-state' (editor only) so the transport
 // bars can show live current/duration/playing.
 //
-// YouTube iframes can't be driven by el.play()/el.currentTime — they speak the
-// postMessage JSON protocol (see features/youtube.js). Commands are routed
-// through applyYtCommand(), which queues them if the player hasn't loaded yet
-// and replays from onReady, so the moderator's intent is never lost.
+// YouTube in serverClock / moderatorMaster uses yt-timeline instead.
 watch(
   () => props.mediaCtrl,
   (ctrl) => {
@@ -554,7 +1076,8 @@ watch(
         else if (cmd.playing === false) { el.pause?.() }
         continue
       }
-      // YouTube — postMessage, with pre-ready queuing.
+      // YouTube — always apply media-ctrl (legacy path). serverClock/moderatorMaster
+      // also fan out media-ctrl from ytTransport so OBS cannot miss yt-timeline-only.
       const yt = ytEls.get(id)
       if (yt) {
         if (ytNonce[id] === cmd.nonce) continue
@@ -566,15 +1089,114 @@ watch(
   { deep: true, flush: 'post' }
 )
 
-// Keep YouTube mute/volume/speed in sync with the layer's video sub-object
-// (the embed doesn't read our props; we push them via postMessage on change).
+// Authoritative YouTube timelines — soft drift correction + UI clock.
+// Hard transport apply is done via mirrored media-ctrl (see watcher above).
 watch(
-  () => renderable.value.filter((l) => l.type === 'youtube').map((l) => [l.id, !!(l.video?.muted), l.video?.volume, l.video?.speed]),
+  () => scene.ytTimeline,
+  (map) => {
+    for (const id of Object.keys(map || {})) {
+      const tl = map[id]
+      if (!tl || !tl.nonce) continue
+      if (isLegacyYt(id)) continue
+      if (props.mode === 'editor' && ytSyncModeOf(layerById(id)) === 'moderatorMaster' && tl._chase) {
+        continue
+      }
+      // Keep pending snapshot for onReady; do not hard-seek here (media-ctrl does).
+      if (!ytReady[id]) {
+        ytPendingTimeline[id] = tl
+        continue
+      }
+      if (ytTimelineNonce[id] === tl.nonce) continue
+      ytTimelineNonce[id] = tl.nonce
+      // Soft chase only
+      if (tl._chase && props.mode === 'obs') {
+        const el = ytEls.get(id)
+        const actual = ytState[id]?.current
+        correctToExpected(el, tl, actual)
+        if (tl.playing) ytCommand(el, 'playVideo')
+        else ytCommand(el, 'pauseVideo')
+      }
+      if (props.mode === 'editor') {
+        pushMediaState(id, {
+          playing: !!tl.playing && !tl.stop,
+          current: expectedTime(tl)
+        })
+      }
+    }
+  },
+  { deep: true, flush: 'post' }
+)
+
+// Keep YouTube mute/volume/speed in sync with the layer's video sub-object
+// (and editor previewAudio). The embed doesn't read our props; we push them
+// via postMessage on change.
+watch(
+  () => renderable.value.filter((l) => l.type === 'youtube').map((l) => [
+    l.id, !!(l.video?.muted), l.video?.volume, l.video?.speed, l.youtube?.previewAudio
+  ]),
   (entries) => {
     for (const [id] of entries) applyYtSettings(id)
   },
   { deep: true, flush: 'post' }
 )
+
+// Drift correction + moderatorMaster heartbeat.
+let ytCorrectTimer = null
+let ytHeartbeatTimer = null
+
+function tickYtCorrect() {
+  for (const [id, el] of ytEls) {
+    if (!el || !ytReady[id]) continue
+    const l = layerById(id)
+    if (!l || l.type !== 'youtube') continue
+    const mode = ytSyncModeOf(l)
+    if (mode === 'legacy') continue
+    // In moderatorMaster the editor is the master — don't correct ourselves.
+    if (mode === 'moderatorMaster' && props.mode === 'editor') continue
+    const tl = scene.ytTimeline[id]
+    if (!tl || !tl.playing || tl.stop) {
+      if (props.mode === 'editor') scene.setYtSyncStatus(id, { correcting: false, driftMs: 0 })
+      continue
+    }
+    // Cooldown after hard seek — YouTube needs time to buffer; seeking again
+    // during that window caused perpetual OBS lag (hypothesis C).
+    if (ytLastForceSeekAt[id] && Date.now() - ytLastForceSeekAt[id] < 1200) continue
+    const actual = ytState[id]?.current
+    const expected = expectedTime(tl)
+    const driftMs = actual != null ? Math.round(Math.abs(actual - expected) * 1000) : 0
+    const corrected = correctToExpected(el, tl, actual)
+    if (corrected) ytLastForceSeekAt[id] = Date.now()
+    if (props.mode === 'editor') {
+      scene.setYtSyncStatus(id, { correcting: !!corrected, driftMs })
+    }
+  }
+}
+
+function tickYtHeartbeat() {
+  if (props.mode !== 'editor') return
+  for (const [id] of ytEls) {
+    const l = layerById(id)
+    if (!l || l.type !== 'youtube') continue
+    if (ytSyncModeOf(l) !== 'moderatorMaster') continue
+    if (!ytReady[id]) continue
+    const st = ytState[id] || {}
+    scene.sendYtTime(id, {
+      current: st.current || 0,
+      playing: !!st.playing,
+      rate: l.video?.speed || 1
+    })
+  }
+}
+
+onMounted(() => {
+  ytCorrectTimer = setInterval(tickYtCorrect, YT_CORRECT_INTERVAL_MS)
+  ytHeartbeatTimer = setInterval(tickYtHeartbeat, YT_HEARTBEAT_MS)
+})
+
+onUnmounted(() => {
+  if (ytCorrectTimer) { clearInterval(ytCorrectTimer); ytCorrectTimer = null }
+  if (ytHeartbeatTimer) { clearInterval(ytHeartbeatTimer); ytHeartbeatTimer = null }
+})
 
 function onVideoMeta(layer) {
   const el = videoEls.get(layer.id)
@@ -599,8 +1221,9 @@ function onImgMeta(layer, ev) {
 // layer — guarded by a transient _aspectFit flag so manual resize is respected.
 function emitAspectFit(layer, natW, natH) {
   if (props.mode !== 'editor') return
-  if (layer._aspectFit) return
   if (!natW || !natH) return
+  natSizes.set(layer.id, { w: natW, h: natH })
+  if (layer._aspectFit) return
   emit('fit-aspect', { id: layer.id, natW, natH })
 }
 
@@ -709,6 +1332,10 @@ function fmt(sec) {
 }
 .layer { position: absolute; pointer-events: none; }
 .layer.interactive { pointer-events: auto; cursor: pointer; }
+.layer.interactive:hover:not(.sel) {
+  outline: 1.5px solid color-mix(in srgb, var(--fluent-accent, #3b82f6) 80%, #fff);
+  outline-offset: 0;
+}
 .layer.locked { outline: 1px dashed rgba(255,255,255,.25); }
 
 /* --- Audio player --- */
@@ -737,9 +1364,9 @@ function fmt(sec) {
   min-height: 0;
 }
 .audio-note {
-  font-size: 28px;
-  line-height: 1;
-  text-shadow: 0 1px 2px rgba(0,0,0,.3);
+  flex: none;
+  color: #fff;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,.3));
 }
 .audio-name {
   font-size: 13px;
@@ -792,7 +1419,7 @@ function fmt(sec) {
   align-items: center;
   gap: 6px;
 }
-.ap-vol-icon { font-size: 11px; }
+.ap-vol-icon { flex: none; opacity: .9; }
 .ap-vol {
   flex: 1;
   height: 3px;
@@ -810,8 +1437,38 @@ function fmt(sec) {
 }
 
 /* --- YouTube video --- */
-.yt-body { width: 100%; height: 100%; background: #000; }
-.yt-body iframe { width: 100%; height: 100%; }
+.yt-body { width: 100%; height: 100%; background: #000; position: relative; overflow: hidden; }
+.yt-body iframe { width: 100%; height: 100%; border: 0; }
+.yt-obs-clean iframe { pointer-events: none; }
+.yt-obs-mask {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: #000;
+  pointer-events: none;
+}
+.browser-body { width: 100%; height: 100%; position: relative; background: transparent; overflow: hidden; }
+.browser-frame { width: 100%; height: 100%; border: 0; background: transparent; pointer-events: none; }
+.multi-browser .multi-frame { position: absolute; inset: 0; }
+.multi-browser.is-locked .multi-frame.is-waiting {
+  opacity: 0 !important;
+  visibility: hidden;
+  pointer-events: none;
+}
+.multi-browser.is-locked .multi-frame.is-active {
+  opacity: 1;
+  z-index: 1;
+}
+.browser-shield { position: absolute; inset: 0; z-index: 2; cursor: pointer; background: transparent; }
+.browser-empty {
+  display: flex; align-items: center; justify-content: center;
+  width: 100%; height: 100%; color: rgba(255,255,255,.5); font-size: 14px;
+  background: rgba(20,20,30,.6);
+}
+.browser-badge {
+  position: absolute; top: 4px; left: 4px; font-size: 10px; padding: 2px 6px;
+  background: rgba(0,0,0,.65); color: #fff; border-radius: 4px; pointer-events: none;
+}
 .yt-placeholder {
   width: 100%; height: 100%;
   display: flex; align-items: center; justify-content: center;

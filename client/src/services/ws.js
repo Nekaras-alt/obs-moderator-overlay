@@ -58,8 +58,11 @@ export class SceneSocket {
       for (const m of this._pending) this.ws.send(m)
       this._pending = []
     }
-    ws.onclose = () => {
+    ws.onclose = (ev) => {
       this._setStatus(false)
+      // 4001 = unauthorized: server rejected the token. Stop reconnecting
+      // so the client doesn't spam reconnect attempts with an invalid token.
+      if (ev.code === 4001) this._shouldConnect = false
       if (this._shouldConnect) this._scheduleReconnect()
     }
     ws.onerror = () => { /* onclose will handle reconnect */ }
@@ -68,7 +71,7 @@ export class SceneSocket {
       try { msg = JSON.parse(ev.data) } catch (_) { return }
       if (msg.type === 'op-result' && msg.ref) {
         const r = this._opResolvers.get(msg.ref)
-        if (r) { r.resolve(msg.result); this._opResolvers.delete(msg.ref) }
+        if (r) { r(msg.result); this._opResolvers.delete(msg.ref) }
         return
       }
       for (const fn of this._listeners) fn(msg)
@@ -121,6 +124,49 @@ export class SceneSocket {
       }, 4000)
     })
   }
+
+  // Authoritative YouTube timeline transport (serverClock / moderatorMaster).
+  // patch: { playing?, seek?, stop?, rate? }
+  sendYtTransport(id, patch) {
+    const ref = this._refCounter++
+    return new Promise((resolve) => {
+      this._opResolvers.set(ref, resolve)
+      this._send({ type: 'ytTransport', ref, id, patch })
+      setTimeout(() => {
+        if (this._opResolvers.has(ref)) {
+          this._opResolvers.delete(ref)
+          resolve({ ok: false, error: 'timeout' })
+        }
+      }, 4000)
+    })
+  }
+
+  // moderatorMaster chase heartbeat. Fire-and-forget (no op-result wait).
+  // patch: { current, playing?, rate? }
+  sendYtTime(id, patch) {
+    this._send({ type: 'ytTime', id, patch })
+  }
+
+  // Send a transient SoundPad one-shot (play a reaction sound / stop all).
+  // Same non-persisted fan-out model as sendMediaCtrl: the server broadcasts it
+  // to all clients including the sender, so the editor preview and the OBS
+  // stream converge. payload shape: { src?, volume?, stopAll?, slotId? }.
+  sendSoundPlay(payload) {
+    const ref = this._refCounter++
+    return new Promise((resolve) => {
+      this._opResolvers.set(ref, resolve)
+      this._send({ type: 'soundPlay', ref, ...payload })
+      setTimeout(() => {
+        if (this._opResolvers.has(ref)) {
+          this._opResolvers.delete(ref)
+          resolve({ ok: false, error: 'timeout' })
+        }
+      }, 4000)
+    })
+  }
+
+  // Send raw JSON (used for resync).
+  sendRaw(msg) { this._send(msg) }
 
   ping() { this._send({ type: 'ping' }) }
 }

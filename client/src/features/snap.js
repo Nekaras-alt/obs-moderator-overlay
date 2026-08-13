@@ -11,7 +11,7 @@ const THRESH = 8 // px snap distance
 function xPoints(x, w) { return { left: x, cx: x + w / 2, right: x + w } }
 function yPoints(y, h) { return { top: y, cy: y + h / 2, bottom: y + h } }
 
-export function snapMove(x, y, w, h, settings, allLayers, selfId) {
+export function snapMove(x, y, w, h, settings, allLayers, selfId, extraRects = []) {
   const guides = []
   let bestDX = null
   let bestDY = null
@@ -27,11 +27,10 @@ export function snapMove(x, y, w, h, settings, allLayers, selfId) {
       const d = val - target
       if (Math.abs(d) <= THRESH && (bestDX === null || Math.abs(d) < Math.abs(bestDX))) {
         bestDX = d
-        // which edge aligns -> new x
         if (which === 'left') snapX = x - d
         else if (which === 'cx') snapX = x - d
         else snapX = x - d
-        guides.push({ id: 'sx-' + mode, type: 'v', style: { left: target + 'px', class: 'v' } })
+        guides.push({ id: 'sx-' + mode + '-' + target, type: 'v', style: { left: target + 'px', class: 'v' } })
       }
     }
   }
@@ -42,12 +41,11 @@ export function snapMove(x, y, w, h, settings, allLayers, selfId) {
       if (Math.abs(d) <= THRESH && (bestDY === null || Math.abs(d) < Math.abs(bestDY))) {
         bestDY = d
         snapY = y - d
-        guides.push({ id: 'sy-' + mode, type: 'h', style: { top: target + 'px', class: 'h' } })
+        guides.push({ id: 'sy-' + mode + '-' + target, type: 'h', style: { top: target + 'px', class: 'h' } })
       }
     }
   }
 
-  // 1. Snap to grid
   if (settings.snapToGrid) {
     const g = settings.gridSize || 40
     const rx = Math.round(x / g) * g
@@ -56,13 +54,11 @@ export function snapMove(x, y, w, h, settings, allLayers, selfId) {
     if (Math.abs(ry - y) <= THRESH) { snapY = ry; guides.push({ id: 'grid-y', type: 'h', style: { top: ry + 'px' } }) }
   }
 
-  // 2. Snap to stage center
   if (settings.snapToCenter) {
     considerX(STAGE.W / 2, 'center')
     considerY(STAGE.H / 2, 'center')
   }
 
-  // 3. Snap to other layers' edges/centers
   if (settings.snapToEdges) {
     for (const l of allLayers) {
       if (l.id === selfId) continue
@@ -72,9 +68,17 @@ export function snapMove(x, y, w, h, settings, allLayers, selfId) {
       considerX(tx.left, 'edge'); considerX(tx.cx, 'edge'); considerX(tx.right, 'edge')
       considerY(ty.top, 'edge'); considerY(ty.cy, 'edge'); considerY(ty.bottom, 'edge')
     }
-    // Also snap to stage edges.
     considerX(0, 'stage'); considerX(STAGE.W, 'stage')
     considerY(0, 'stage'); considerY(STAGE.H, 'stage')
+  }
+
+  // Snap to OBS native source bounds (guides).
+  if (settings.showObsBounds && extraRects?.length) {
+    for (const r of extraRects) {
+      if (!r || r.visible === false) continue
+      considerX(r.x, 'obs'); considerX(r.x + r.w / 2, 'obs'); considerX(r.x + r.w, 'obs')
+      considerY(r.y, 'obs'); considerY(r.y + r.h / 2, 'obs'); considerY(r.y + r.h, 'obs')
+    }
   }
 
   // Normalize guide styles into the format Canvas expects (.v / .h classes).
@@ -88,20 +92,37 @@ export function snapMove(x, y, w, h, settings, allLayers, selfId) {
   return { x: snapX, y: snapY, guides: normalized }
 }
 
-// Distance display: returns text labels describing gaps to nearest neighbors.
-// (Used by the optional "show distances" overlay — M2 polish.)
+// Distance display: returns text labels describing gaps between `box` and each
+// neighboring layer. Emits both horizontal gaps (when the two boxes overlap
+// vertically) and vertical gaps (when they overlap horizontally), so the moderator
+// sees the spacing on both axes. Each label carries its anchor point in stage px
+// and an `axis` so the renderer can offset the label cleanly off the gap midpoint.
 export function distanceLabels(box, others, selfId) {
   const labels = []
+  const MAX = 400 // px — beyond this the label would clutter more than it helps
   for (const o of others) {
     if (o.id === selfId) continue
     const t = o.transform
-    // Horizontal gap if vertically overlapping
+    // Horizontal gap: boxes overlap on the Y axis. Anchor at the gap midpoint.
     const vOverlap = !(box.y + box.h < t.y || box.y > t.y + t.h)
     if (vOverlap) {
-      const gap = box.x >= t.x + t.w ? box.x - (t.x + t.w) : (t.x >= box.x + box.w ? t.x - (box.x + box.w) : null)
-      if (gap !== null && gap < 200) {
-        const midY = Math.max(box.y, t.y) + Math.min(box.y + box.h, t.y + t.h) / 2 - Math.max(box.y, t.y) / 2
-        labels.push({ x: Math.min(box.x + box.w, t.x + t.w) + gap / 2, y: Math.max(box.y, t.y), text: Math.round(gap) + 'px' })
+      const gap = box.x >= t.x + t.w ? box.x - (t.x + t.w)
+        : t.x >= box.x + box.w ? t.x - (box.x + box.w) : null
+      if (gap !== null && gap <= MAX) {
+        const x = Math.min(box.x + box.w, t.x + t.w) + gap / 2
+        const y = (Math.max(box.y, t.y) + Math.min(box.y + box.h, t.y + t.h)) / 2
+        labels.push({ x, y, text: Math.round(gap) + 'px', axis: 'h' })
+      }
+    }
+    // Vertical gap: boxes overlap on the X axis.
+    const hOverlap = !(box.x + box.w < t.x || box.x > t.x + t.w)
+    if (hOverlap) {
+      const gap = box.y >= t.y + t.h ? box.y - (t.y + t.h)
+        : t.y >= box.y + box.h ? t.y - (box.y + box.h) : null
+      if (gap !== null && gap <= MAX) {
+        const x = (Math.max(box.x, t.x) + Math.min(box.x + box.w, t.x + t.w)) / 2
+        const y = Math.min(box.y + box.h, t.y + t.h) + gap / 2
+        labels.push({ x, y, text: Math.round(gap) + 'px', axis: 'v' })
       }
     }
   }

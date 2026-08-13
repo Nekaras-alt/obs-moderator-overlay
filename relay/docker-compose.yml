@@ -1,0 +1,43 @@
+# Personal / self-host OMO connector relay behind TLS.
+# Usage:
+#   1. Point DNS A/AAAA at this VPS
+#   2. Set RELAY_DOMAIN below (or export)
+#   3. docker compose up -d
+# App: OMO_RELAY_URLS=wss://YOUR_DOMAIN/connector
+
+services:
+  relay:
+    image: node:20-alpine
+    working_dir: /app
+    volumes:
+      - ./:/app
+    command: sh -c "npm install --omit=dev && node server.js"
+    environment:
+      PORT: "8787"
+      OMO_RELAY_PATH: /connector
+      OMO_RELAY_TTL_MS: "3600000"
+      OMO_RELAY_MAX_ROOMS: "500"
+      OMO_RELAY_RATE_MAX: "30"
+      OMO_RELAY_PAIR_ONCE: "0"
+    expose:
+      - "8787"
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      RELAY_DOMAIN: ${RELAY_DOMAIN:-relay.example.com}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - relay
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:

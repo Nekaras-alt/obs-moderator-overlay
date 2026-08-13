@@ -13,7 +13,7 @@
     </div>
 
     <div class="controls">
-      <input v-model="search" class="search" placeholder="Search layers…" />
+      <input v-model="search" class="search" :placeholder="t('layers.search')" />
       <select v-model="folderFilter" class="folder-sel">
         <option value="">All folders</option>
         <option v-for="f in scene.folders" :key="f.id" :value="f.id">{{ f.name }}</option>
@@ -21,56 +21,104 @@
       </select>
     </div>
 
-    <div class="list">
-      <div
+    <div
+      class="list list-stagger"
+      role="listbox"
+      aria-label="Layers"
+      tabindex="0"
+      @keydown="onListKey"
+    >
+      <LayerContextMenu
         v-for="(layer, idx) in visibleList"
         :key="layer.id"
-        class="item"
-        :class="{ selected: layer.id === scene.selectedId, locked: layer.locked }"
-        draggable="true"
-        @click="scene.select(layer.id)"
-        @dragstart="onDragStart(idx, $event)"
-        @dragover.prevent
-        @drop.prevent="onDrop(idx)"
+        :layer="layer"
       >
+        <div
+          class="item"
+          role="option"
+          :aria-selected="layer.id === scene.selectedId"
+          :tabindex="layer.id === scene.selectedId ? 0 : -1"
+          :class="{ selected: layer.id === scene.selectedId, locked: layer.locked }"
+          draggable="true"
+          @click="scene.select(layer.id)"
+          @keydown.enter.prevent="scene.select(layer.id)"
+          @keydown.space.prevent="scene.select(layer.id)"
+          @dragstart="onDragStart(idx, $event)"
+          @dragover.prevent
+          @drop.prevent="onDrop(idx)"
+        >
         <span class="swatch" :style="{ background: labelColor(layer.colorLabel) }" :title="layer.colorLabel"></span>
+        <div class="thumb" aria-hidden="true">
+          <img v-if="thumbUrl(layer)" :src="thumbUrl(layer)" alt="" />
+          <span v-else class="thumb-fallback">
+            <component :is="typeIcon(layer.type)" class="h-3.5 w-3.5" />
+          </span>
+        </div>
         <button
           class="icon"
           :title="layer.visible === false ? 'Hidden in editor' : 'Visible in editor'"
+          :aria-label="layer.visible === false ? 'Show in editor' : 'Hide in editor'"
           @click.stop="scene.updateLayer(layer.id, { visible: layer.visible === false })"
-        >{{ layer.visible === false ? '∘' : '👁' }}</button>
+        >
+          <EyeOff v-if="layer.visible === false" class="h-3.5 w-3.5" />
+          <Eye v-else class="h-3.5 w-3.5" />
+        </button>
         <button
           class="icon"
           :class="{ on: layer.audienceVisible }"
           :title="layer.audienceVisible ? 'Shown to audience (on OBS)' : 'Hidden from audience'"
+          :aria-label="layer.audienceVisible ? 'Hide from audience' : 'Show to audience'"
           @click.stop="scene.updateLayer(layer.id, { audienceVisible: !layer.audienceVisible })"
-        >{{ layer.audienceVisible ? '🌍' : '🚫' }}</button>
+        >
+          <Globe v-if="layer.audienceVisible" class="h-3.5 w-3.5" />
+          <EyeOff v-else class="h-3.5 w-3.5" />
+        </button>
         <span class="name" :title="layer.name">{{ layer.name }}</span>
         <span class="type muted">{{ layer.type }}</span>
 
         <div class="row-actions">
-          <button class="icon" title="Move up" @click.stop="moveUp(idx)">▲</button>
-          <button class="icon" title="Move down" @click.stop="moveDown(idx)">▼</button>
-          <button class="icon" :title="layer.locked ? 'Unlock' : 'Lock'" @click.stop="scene.updateLayer(layer.id, { locked: !layer.locked })">{{ layer.locked ? '🔒' : '🔓' }}</button>
-          <button class="icon" title="Duplicate" @click.stop="scene.duplicateLayer(layer.id)">⧉</button>
+          <button class="icon" title="Move up" @click.stop="moveUp(idx)"><ChevronUp class="h-3.5 w-3.5" /></button>
+          <button class="icon" title="Move down" @click.stop="moveDown(idx)"><ChevronDown class="h-3.5 w-3.5" /></button>
+          <button class="icon" :title="layer.locked ? 'Unlock' : 'Lock'" @click.stop="scene.updateLayer(layer.id, { locked: !layer.locked })">
+            <Lock v-if="layer.locked" class="h-3.5 w-3.5" />
+            <Unlock v-else class="h-3.5 w-3.5" />
+          </button>
+          <button class="icon" title="Duplicate" @click.stop="scene.duplicateLayer(layer.id)"><Copy class="h-3.5 w-3.5" /></button>
           <input class="color-pick" type="color" :value="labelHex(layer.colorLabel)" title="Layer color label" @change="setColor(layer, $event.target.value)" />
-          <button class="icon danger" title="Delete (to trash)" @click.stop="scene.deleteLayer(layer.id)">🗑</button>
+          <button class="icon danger" title="Delete (to trash)" @click.stop="scene.deleteLayer(layer.id)"><Trash2 class="h-3.5 w-3.5" /></button>
         </div>
-      </div>
-      <div v-if="!scene.layers.length" class="empty muted">
-        No layers yet. Drag files here, use “Add media”, or paste a URL.
-      </div>
-      <div v-else-if="!visibleList.length" class="empty muted">No layers match the filter.</div>
+        </div>
+      </LayerContextMenu>
+      <EmptyState
+        v-if="!scene.layers.length"
+        variant="empty"
+        :title="t('layers.empty')"
+        class="!py-6"
+      />
+      <EmptyState
+        v-else-if="!visibleList.length"
+        variant="empty"
+        :title="t('layers.noMatch')"
+        class="!py-6"
+      />
     </div>
   </div>
 </template>
 
 <script setup>
 import { ref, computed } from 'vue'
+import {
+  Eye, EyeOff, Globe, Lock, Unlock, Copy, Trash2, ChevronUp, ChevronDown,
+  Film, Music, TvMinimalPlay, Type, Globe2, MessageCircle, Megaphone, Smile, Box
+} from '@lucide/vue'
 import { useSceneStore } from '../../stores/scene.js'
 import { COLOR_LABELS } from '@shared/schema.js'
+import LayerContextMenu from '@/components/shell/LayerContextMenu.vue'
+import EmptyState from '@/components/ui/EmptyState.vue'
+import { useI18n } from '@/i18n'
 
 const scene = useSceneStore()
+const { t } = useI18n()
 const search = ref('')
 const folderFilter = ref('')
 const dragFromIdx = ref(null)
@@ -100,6 +148,24 @@ function setColor(layer, hex) {
   scene.updateLayer(layer.id, { colorLabel: match ? match.id : 'none' })
 }
 
+function thumbUrl(layer) {
+  if (!layer) return ''
+  if (['image', 'gif', 'emote'].includes(layer.type) && layer.src) return layer.src
+  return ''
+}
+function typeIcon(type) {
+  return ({
+    video: Film,
+    audio: Music,
+    youtube: TvMinimalPlay,
+    text: Type,
+    browser: Globe2,
+    chatis: MessageCircle,
+    multiBrowser: Megaphone,
+    emote: Smile
+  })[type] || Box
+}
+
 // Reorder via up/down buttons (reliable) + drag-and-drop (fast).
 function orderIdsAfter() {
   return [...scene.layers].sort((a, b) => (a.order || 0) - (b.order || 0)).map((l) => l.id)
@@ -127,6 +193,27 @@ function onDrop(targetIdx) {
   ids.splice(targetIdx, 0, moved)
   scene.reorder(ids)
 }
+
+function onListKey(e) {
+  const list = visibleList.value
+  if (!list.length) return
+  const cur = list.findIndex((l) => l.id === scene.selectedId)
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault()
+    const next = e.key === 'ArrowDown'
+      ? Math.min(list.length - 1, (cur < 0 ? 0 : cur + 1))
+      : Math.max(0, (cur < 0 ? 0 : cur - 1))
+    scene.select(list[next].id)
+  } else if (e.key === 'Home') {
+    e.preventDefault()
+    scene.select(list[0].id)
+  } else if (e.key === 'End') {
+    e.preventDefault()
+    scene.select(list[list.length - 1].id)
+  } else if (e.key === 'Delete' || e.key === 'Backspace') {
+    if (scene.selectedId) { e.preventDefault(); scene.deleteLayer(scene.selectedId) }
+  }
+}
 </script>
 
 <style scoped>
@@ -146,7 +233,12 @@ function onDrop(targetIdx) {
 }
 .controls { padding: 8px; display: flex; flex-direction: column; gap: 6px; border-bottom: 1px solid var(--border); }
 .search, .folder-sel { width: 100%; font-size: 12px; }
-.list { overflow-y: auto; flex: 1; }
+.list {
+  overflow-y: auto;
+  flex: 1;
+  scrollbar-width: none;
+}
+.list::-webkit-scrollbar { width: 0; height: 0; display: none; }
 .item {
   display: flex;
   align-items: center;
@@ -157,19 +249,50 @@ function onDrop(targetIdx) {
   position: relative;
 }
 .item:hover { background: var(--bg-2); }
-.item.selected { background: var(--bg-3); }
+.item.selected {
+  background: color-mix(in srgb, var(--fluent-accent) 16%, var(--bg-3));
+  outline: 1px solid color-mix(in srgb, var(--fluent-accent) 40%, transparent);
+}
+.item:focus-visible {
+  outline: 2px solid var(--fluent-accent);
+  outline-offset: -2px;
+}
 .item.locked .name { opacity: .6; }
 .swatch { width: 4px; align-self: stretch; border-radius: 2px; min-height: 18px; }
+.thumb {
+  width: 28px; height: 28px; border-radius: 4px; overflow: hidden;
+  background: var(--bg-3); display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.thumb img { width: 100%; height: 100%; object-fit: cover; }
+.thumb-fallback {
+  font-size: 12px;
+  opacity: .8;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
 .name { flex: 1; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .type { font-size: 10px; text-transform: uppercase; }
 .row-actions { display: none; gap: 2px; align-items: center; }
 .item:hover .row-actions, .item.selected .row-actions { display: flex; }
 .icon {
-  padding: 2px 4px; font-size: 12px;
-  background: transparent; border: none; border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  font-size: 12px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--text-dim);
+  cursor: pointer;
 }
-.icon:hover { background: var(--bg-3); }
+.icon:hover { background: var(--fluent-reveal); color: var(--text); }
 .icon.on { color: var(--ok); }
+.icon.danger { color: var(--danger); }
 .color-pick { width: 16px; height: 18px; padding: 0; border: none; background: none; cursor: pointer; }
 .empty { padding: 16px; font-size: 13px; }
 </style>

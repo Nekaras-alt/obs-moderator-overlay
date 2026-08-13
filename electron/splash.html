@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OBS Moderator Overlay</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #1b1c1f; }
+    #loading {
+      position: fixed; inset: 0; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 16px;
+      background:
+        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(0, 120, 212, 0.22), transparent 55%),
+        #1b1c1f;
+      font-family: "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+      color: #e9eaed;
+    }
+    .omo-mark {
+      width: 40px; height: 40px; border-radius: 10px;
+      background: linear-gradient(145deg, #0078d4, #005a9e);
+      box-shadow: 0 0 0 1px rgba(255,255,255,.08), 0 8px 24px rgba(0,120,212,.35);
+      animation: omo-pulse 1.4s ease-in-out infinite;
+    }
+    .omo-spinner {
+      width: 28px; height: 28px; border-radius: 50%;
+      border: 2px solid rgba(233,234,237,.15); border-top-color: #0078d4;
+      animation: omo-spin .8s linear infinite;
+    }
+    .omo-title { margin: 0; font-size: 15px; font-weight: 600; }
+    .omo-label { margin: 0; font-size: 13px; font-weight: 500; color: #a0a4ab; }
+    @keyframes omo-spin { to { transform: rotate(360deg); } }
+    @keyframes omo-pulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.06); opacity: .88; }
+    }
+  </style>
+</head>
+<body>
+  <div id="loading" role="status" aria-live="polite" aria-busy="true">
+    <div class="omo-mark" aria-hidden="true"></div>
+    <div class="omo-spinner" aria-hidden="true"></div>
+    <p class="omo-title">OBS Moderator Overlay</p>
+    <p class="omo-label">Starting server…</p>
+  </div>
+</body>
+</html>

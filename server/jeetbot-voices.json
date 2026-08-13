@@ -1,0 +1,1627 @@
+[
+  {
+    "id": "aidar",
+    "name": "Aidar",
+    "group": "Базовые голоса"
+  },
+  {
+    "id": "baya",
+    "name": "Baya",
+    "group": "Базовые голоса"
+  },
+  {
+    "id": "kseniya",
+    "name": "Kseniya",
+    "group": "Базовые голоса"
+  },
+  {
+    "id": "xenia",
+    "name": "Xenia",
+    "group": "Базовые голоса"
+  },
+  {
+    "id": "eugene",
+    "name": "Eugene",
+    "group": "Базовые голоса"
+  },
+  {
+    "id": "stalker_bandit",
+    "name": "Bandit",
+    "group": "Сталкер (Stalker)"
+  },
+  {
+    "id": "stalker_sidor",
+    "name": "Sidor",
+    "group": "Сталкер (Stalker)"
+  },
+  {
+    "id": "stalker_stalker",
+    "name": "Stalker",
+    "group": "Сталкер (Stalker)"
+  },
+  {
+    "id": "stalker_dolg",
+    "name": "Dolg",
+    "group": "Сталкер (Stalker)"
+  },
+  {
+    "id": "stalker_forester",
+    "name": "forester",
+    "group": "Сталкер (Stalker)"
+  },
+  {
+    "id": "atomic_hraz",
+    "name": "Hraz",
+    "group": "Атомик (Atomic)"
+  },
+  {
+    "id": "atomic_p3",
+    "name": "P3",
+    "group": "Атомик (Atomic)"
+  },
+  {
+    "id": "atomic_tereshkova",
+    "name": "Tereshkova",
+    "group": "Атомик (Atomic)"
+  },
+  {
+    "id": "atomic_babazina",
+    "name": "Babazina",
+    "group": "Атомик (Atomic)"
+  },
+  {
+    "id": "portal_glados",
+    "name": "GLaDOS",
+    "group": "Портал (Portal)"
+  },
+  {
+    "id": "portal_wheatley",
+    "name": "Wheatley",
+    "group": "Портал (Portal)"
+  },
+  {
+    "id": "portal_dictor",
+    "name": "Dictor",
+    "group": "Портал (Portal)"
+  },
+  {
+    "id": "warcraft_voljin",
+    "name": "voljin",
+    "group": "Варкрафт (Warcraft)"
+  },
+  {
+    "id": "warcraft_archimonde",
+    "name": "archimonde",
+    "group": "Варкрафт (Warcraft)"
+  },
+  {
+    "id": "warcraft_grom",
+    "name": "grom",
+    "group": "Варкрафт (Warcraft)"
+  },
+  {
+    "id": "warcraft_priest",
+    "name": "priest",
+    "group": "Варкрафт (Warcraft)"
+  },
+  {
+    "id": "warcraft_gryphon",
+    "name": "gryphon",
+    "group": "Варкрафт (Warcraft)"
+  },
+  {
+    "id": "warcraft_villagerm",
+    "name": "villagerm",
+    "group": "Варкрафт (Warcraft)"
+  },
+  {
+    "id": "warcraft_uther",
+    "name": "uther",
+    "group": "Варкрафт (Warcraft)"
+  },
+  {
+    "id": "warcraft_dread_bm",
+    "name": "dread bm",
+    "group": "Варкрафт (Warcraft)"
+  },
+  {
+    "id": "warcraft_mannoroth",
+    "name": "mannoroth",
+    "group": "Варкрафт (Warcraft)"
+  },
+  {
+    "id": "warcraft_peasant",
+    "name": "peasant",
+    "group": "Варкрафт (Warcraft)"
+  },
+  {
+    "id": "warcraft_muradin",
+    "name": "muradin",
+    "group": "Варкрафт (Warcraft)"
+  },
+  {
+    "id": "warcraft_acolyte",
+    "name": "acolyte",
+    "group": "Варкрафт (Warcraft)"
+  },
+  {
+    "id": "warcraft_sylvanas_w",
+    "name": "sylvanas w",
+    "group": "Варкрафт (Warcraft)"
+  },
+  {
+    "id": "warcraft_garithos",
+    "name": "garithos",
+    "group": "Варкрафт (Warcraft)"
+  },
+  {
+    "id": "warcraft_rifleman",
+    "name": "rifleman",
+    "group": "Варкрафт (Warcraft)"
+  },
+  {
+    "id": "warcraft_thrall",
+    "name": "thrall",
+    "group": "Варкрафт (Warcraft)"
+  },
+  {
+    "id": "warcraft_captain",
+    "name": "captain",
+    "group": "Варкрафт (Warcraft)"
+  },
+  {
+    "id": "warcraft_sylvanas",
+    "name": "sylvanas",
+    "group": "Варкрафт (Warcraft)"
+  },
+  {
+    "id": "warcraft_rexxar",
+    "name": "rexxar",
+    "group": "Варкрафт (Warcraft)"
+  },
+  {
+    "id": "warcraft_footman",
+    "name": "footman",
+    "group": "Варкрафт (Warcraft)"
+  },
+  {
+    "id": "warcraft_peon",
+    "name": "peon",
+    "group": "Варкрафт (Warcraft)"
+  },
+  {
+    "id": "warcraft_whitemane",
+    "name": "whitemane",
+    "group": "Варкрафт (Warcraft)"
+  },
+  {
+    "id": "warcraft_elf_eng",
+    "name": "elf eng",
+    "group": "Варкрафт (Warcraft)"
+  },
+  {
+    "id": "warcraft_alchemist",
+    "name": "alchemist",
+    "group": "Варкрафт (Warcraft)"
+  },
+  {
+    "id": "warcraft_chen",
+    "name": "chen",
+    "group": "Варкрафт (Warcraft)"
+  },
+  {
+    "id": "warcraft_dread_t",
+    "name": "dread t",
+    "group": "Варкрафт (Warcraft)"
+  },
+  {
+    "id": "warcraft_archmage",
+    "name": "archmage",
+    "group": "Варкрафт (Warcraft)"
+  },
+  {
+    "id": "warcraft_anubarak",
+    "name": "anubarak",
+    "group": "Варкрафт (Warcraft)"
+  },
+  {
+    "id": "warcraft_admiral",
+    "name": "admiral",
+    "group": "Варкрафт (Warcraft)"
+  },
+  {
+    "id": "warcraft_kael",
+    "name": "kael",
+    "group": "Варкрафт (Warcraft)"
+  },
+  {
+    "id": "warcraft_valeera",
+    "name": "valeera",
+    "group": "Варкрафт (Warcraft)"
+  },
+  {
+    "id": "warcraft_sorceress",
+    "name": "sorceress",
+    "group": "Варкрафт (Warcraft)"
+  },
+  {
+    "id": "warcraft_grunt",
+    "name": "grunt",
+    "group": "Варкрафт (Warcraft)"
+  },
+  {
+    "id": "warcraft_cairne",
+    "name": "cairne",
+    "group": "Варкрафт (Warcraft)"
+  },
+  {
+    "id": "warcraft_breaker",
+    "name": "Spirit breaker",
+    "group": "Варкрафт (Warcraft)"
+  },
+  {
+    "id": "warcraft_hh",
+    "name": "Head Hunter",
+    "group": "Варкрафт (Warcraft)"
+  },
+  {
+    "id": "warcraft_kelthuzad",
+    "name": "kelthuzad",
+    "group": "Варкрафт (Warcraft)"
+  },
+  {
+    "id": "warcraft_narrator",
+    "name": "narrator",
+    "group": "Варкрафт (Warcraft)"
+  },
+  {
+    "id": "warcraft_jaina",
+    "name": "jaina",
+    "group": "Варкрафт (Warcraft)"
+  },
+  {
+    "id": "warcraft_medivh",
+    "name": "medivh",
+    "group": "Варкрафт (Warcraft)"
+  },
+  {
+    "id": "warcraft_arthas",
+    "name": "arthas",
+    "group": "Варкрафт (Warcraft)"
+  },
+  {
+    "id": "warcraft_garrosh",
+    "name": "garrosh",
+    "group": "Варкрафт (Warcraft)"
+  },
+  {
+    "id": "dota2_windranger",
+    "name": "windranger",
+    "group": "Дота (Dota 2)"
+  },
+  {
+    "id": "dota2_omni",
+    "name": "Omni",
+    "group": "Дота (Dota 2)"
+  },
+  {
+    "id": "dota2_bounty",
+    "name": "Bounty Hunter",
+    "group": "Дота (Dota 2)"
+  },
+  {
+    "id": "dota2_luna",
+    "name": "Luna",
+    "group": "Дота (Dota 2)"
+  },
+  {
+    "id": "dota2_tide",
+    "name": "Tide",
+    "group": "Дота (Dota 2)"
+  },
+  {
+    "id": "dota2_lancer",
+    "name": "Phantom Lancer",
+    "group": "Дота (Dota 2)"
+  },
+  {
+    "id": "dota2_bloodseeker",
+    "name": "Bloodseeker",
+    "group": "Дота (Dota 2)"
+  },
+  {
+    "id": "dota2_ranger",
+    "name": "Drow Ranger",
+    "group": "Дота (Dota 2)"
+  },
+  {
+    "id": "dota2_dazzle",
+    "name": "dazzle",
+    "group": "Дота (Dota 2)"
+  },
+  {
+    "id": "dota2_mirana",
+    "name": "mirana",
+    "group": "Дота (Dota 2)"
+  },
+  {
+    "id": "dota2_baratrum",
+    "name": "baratrum",
+    "group": "Дота (Dota 2)"
+  },
+  {
+    "id": "dota2_storm",
+    "name": "Storm Spirit",
+    "group": "Дота (Dota 2)"
+  },
+  {
+    "id": "dota2_witchdoctor",
+    "name": "Witch Doctor",
+    "group": "Дота (Dota 2)"
+  },
+  {
+    "id": "dota2_mortred",
+    "name": "Phantom Assassin",
+    "group": "Дота (Dota 2)"
+  },
+  {
+    "id": "dota2_gyro",
+    "name": "Gyrocopter",
+    "group": "Дота (Dota 2)"
+  },
+  {
+    "id": "dota2_lina",
+    "name": "lina",
+    "group": "Дота (Dota 2)"
+  },
+  {
+    "id": "dota2_juggernaut",
+    "name": "juggernaut",
+    "group": "Дота (Dota 2)"
+  },
+  {
+    "id": "dota2_lycan",
+    "name": "lycan",
+    "group": "Дота (Dota 2)"
+  },
+  {
+    "id": "dota2_kunkka",
+    "name": "kunkka",
+    "group": "Дота (Dota 2)"
+  },
+  {
+    "id": "dota2_treant",
+    "name": "treant",
+    "group": "Дота (Dota 2)"
+  },
+  {
+    "id": "dota2_ember",
+    "name": "ember",
+    "group": "Дота (Dota 2)"
+  },
+  {
+    "id": "dota2_shaker",
+    "name": "shaker",
+    "group": "Дота (Dota 2)"
+  },
+  {
+    "id": "dota2_riki",
+    "name": "riki",
+    "group": "Дота (Dota 2)"
+  },
+  {
+    "id": "dota2_huskar",
+    "name": "huskar",
+    "group": "Дота (Dota 2)"
+  },
+  {
+    "id": "dota2_wraith",
+    "name": "wraith",
+    "group": "Дота (Dota 2)"
+  },
+  {
+    "id": "dota2_zeus",
+    "name": "zeus",
+    "group": "Дота (Dota 2)"
+  },
+  {
+    "id": "dota2_cm",
+    "name": "crystal maiden",
+    "group": "Дота (Dota 2)"
+  },
+  {
+    "id": "dota2_tusk",
+    "name": "tusk",
+    "group": "Дота (Dota 2)"
+  },
+  {
+    "id": "dota2_bristle",
+    "name": "Bristleback",
+    "group": "Дота (Dota 2)"
+  },
+  {
+    "id": "dota2_invoker",
+    "name": "invoker",
+    "group": "Дота (Dota 2)"
+  },
+  {
+    "id": "dota2_abaddon",
+    "name": "abaddon",
+    "group": "Дота (Dota 2)"
+  },
+  {
+    "id": "dota2_clockwerk",
+    "name": "clockwerk",
+    "group": "Дота (Dota 2)"
+  },
+  {
+    "id": "dota2_kotl",
+    "name": "Keeper of the Light",
+    "group": "Дота (Dota 2)"
+  },
+  {
+    "id": "dota2_sniper",
+    "name": "sniper",
+    "group": "Дота (Dota 2)"
+  },
+  {
+    "id": "dota2_wywern",
+    "name": "wywern",
+    "group": "Дота (Dota 2)"
+  },
+  {
+    "id": "dota2_earth",
+    "name": "earth",
+    "group": "Дота (Dota 2)"
+  },
+  {
+    "id": "dota2_monkey",
+    "name": "monkey",
+    "group": "Дота (Dota 2)"
+  },
+  {
+    "id": "dota2_meepo",
+    "name": "meepo",
+    "group": "Дота (Dota 2)"
+  },
+  {
+    "id": "dota2_pudge",
+    "name": "pudge",
+    "group": "Дота (Dota 2)"
+  },
+  {
+    "id": "dota2_d_sven",
+    "name": "d sven",
+    "group": "Дота (Dota 2)"
+  },
+  {
+    "id": "dota2_skywrath",
+    "name": "skywrath",
+    "group": "Дота (Dota 2)"
+  },
+  {
+    "id": "dota2_batrider",
+    "name": "batrider",
+    "group": "Дота (Dota 2)"
+  },
+  {
+    "id": "dota2_queen",
+    "name": "queen",
+    "group": "Дота (Dota 2)"
+  },
+  {
+    "id": "dota2_announcer",
+    "name": "announcer",
+    "group": "Дота (Dota 2)"
+  },
+  {
+    "id": "dota2_templar",
+    "name": "templar",
+    "group": "Дота (Dota 2)"
+  },
+  {
+    "id": "dota2_doom",
+    "name": "doom",
+    "group": "Дота (Dota 2)"
+  },
+  {
+    "id": "dota2_silencer",
+    "name": "silencer",
+    "group": "Дота (Dota 2)"
+  },
+  {
+    "id": "dota2_antimage",
+    "name": "antimage",
+    "group": "Дота (Dota 2)"
+  },
+  {
+    "id": "lol_quinn",
+    "name": "quinn",
+    "group": "LoL"
+  },
+  {
+    "id": "lol_anivia",
+    "name": "anivia",
+    "group": "LoL"
+  },
+  {
+    "id": "lol_janna",
+    "name": "janna",
+    "group": "LoL"
+  },
+  {
+    "id": "lol_katarina",
+    "name": "katarina",
+    "group": "LoL"
+  },
+  {
+    "id": "lol_volibear",
+    "name": "volibear",
+    "group": "LoL"
+  },
+  {
+    "id": "lol_tristana",
+    "name": "tristana",
+    "group": "LoL"
+  },
+  {
+    "id": "lol_kled",
+    "name": "kled",
+    "group": "LoL"
+  },
+  {
+    "id": "lol_zac",
+    "name": "zac",
+    "group": "LoL"
+  },
+  {
+    "id": "lol_garen",
+    "name": "garen",
+    "group": "LoL"
+  },
+  {
+    "id": "lol_camille",
+    "name": "camille",
+    "group": "LoL"
+  },
+  {
+    "id": "lol_kayle",
+    "name": "kayle",
+    "group": "LoL"
+  },
+  {
+    "id": "lol_ryze",
+    "name": "ryze",
+    "group": "LoL"
+  },
+  {
+    "id": "lol_hecarim",
+    "name": "hecarim",
+    "group": "LoL"
+  },
+  {
+    "id": "lol_gangplank",
+    "name": "gangplank",
+    "group": "LoL"
+  },
+  {
+    "id": "lol_graves",
+    "name": "graves",
+    "group": "LoL"
+  },
+  {
+    "id": "lol_nami",
+    "name": "nami",
+    "group": "LoL"
+  },
+  {
+    "id": "lol_trundle",
+    "name": "trundle",
+    "group": "LoL"
+  },
+  {
+    "id": "lol_udyr",
+    "name": "udyr",
+    "group": "LoL"
+  },
+  {
+    "id": "lol_sett",
+    "name": "sett",
+    "group": "LoL"
+  },
+  {
+    "id": "lol_tryndamere",
+    "name": "tryndamere",
+    "group": "LoL"
+  },
+  {
+    "id": "lol_ahri",
+    "name": "ahri",
+    "group": "LoL"
+  },
+  {
+    "id": "lol_lee_sin",
+    "name": "lee sin",
+    "group": "LoL"
+  },
+  {
+    "id": "lol_draven",
+    "name": "draven",
+    "group": "LoL"
+  },
+  {
+    "id": "lol_ekko",
+    "name": "ekko",
+    "group": "LoL"
+  },
+  {
+    "id": "lol_taric",
+    "name": "taric",
+    "group": "LoL"
+  },
+  {
+    "id": "lol_fizz",
+    "name": "fizz",
+    "group": "LoL"
+  },
+  {
+    "id": "lol_braum",
+    "name": "braum",
+    "group": "LoL"
+  },
+  {
+    "id": "lol_olaf_lol",
+    "name": "olaf lol",
+    "group": "LoL"
+  },
+  {
+    "id": "lol_yone",
+    "name": "yone",
+    "group": "LoL"
+  },
+  {
+    "id": "lol_sejuani",
+    "name": "sejuani",
+    "group": "LoL"
+  },
+  {
+    "id": "lol_neeko",
+    "name": "neeko",
+    "group": "LoL"
+  },
+  {
+    "id": "lol_riven",
+    "name": "riven",
+    "group": "LoL"
+  },
+  {
+    "id": "lol_darius",
+    "name": "darius",
+    "group": "LoL"
+  },
+  {
+    "id": "lol_samira",
+    "name": "samira",
+    "group": "LoL"
+  },
+  {
+    "id": "lol_nilah",
+    "name": "nilah",
+    "group": "LoL"
+  },
+  {
+    "id": "lol_senna",
+    "name": "senna",
+    "group": "LoL"
+  },
+  {
+    "id": "lol_qiyana",
+    "name": "qiyana",
+    "group": "LoL"
+  },
+  {
+    "id": "lol_karma",
+    "name": "karma",
+    "group": "LoL"
+  },
+  {
+    "id": "lol_ksante",
+    "name": "ksante",
+    "group": "LoL"
+  },
+  {
+    "id": "lol_talon",
+    "name": "talon",
+    "group": "LoL"
+  },
+  {
+    "id": "lol_taliyah",
+    "name": "taliyah",
+    "group": "LoL"
+  },
+  {
+    "id": "lol_rakan",
+    "name": "rakan",
+    "group": "LoL"
+  },
+  {
+    "id": "lol_nunu",
+    "name": "nunu",
+    "group": "LoL"
+  },
+  {
+    "id": "lol_renata_glasc",
+    "name": "renata glasc",
+    "group": "LoL"
+  },
+  {
+    "id": "lol_ornn",
+    "name": "ornn",
+    "group": "LoL"
+  },
+  {
+    "id": "lol_vayne",
+    "name": "vayne",
+    "group": "LoL"
+  },
+  {
+    "id": "lol_dr_mundo",
+    "name": "dr mundo",
+    "group": "LoL"
+  },
+  {
+    "id": "lol_akshan",
+    "name": "akshan",
+    "group": "LoL"
+  },
+  {
+    "id": "lol_shyvana",
+    "name": "shyvana",
+    "group": "LoL"
+  },
+  {
+    "id": "lol_cassiopeia",
+    "name": "cassiopeia",
+    "group": "LoL"
+  },
+  {
+    "id": "lol_lissandra",
+    "name": "lissandra",
+    "group": "LoL"
+  },
+  {
+    "id": "lol_azir",
+    "name": "azir",
+    "group": "LoL"
+  },
+  {
+    "id": "lol_zyra",
+    "name": "zyra",
+    "group": "LoL"
+  },
+  {
+    "id": "lol_vi",
+    "name": "vi",
+    "group": "LoL"
+  },
+  {
+    "id": "lol_swain",
+    "name": "swain",
+    "group": "LoL"
+  },
+  {
+    "id": "metro_miller",
+    "name": "Metro Miller",
+    "group": "Metro"
+  },
+  {
+    "id": "skyrim_dragon",
+    "name": "Dragon",
+    "group": "Скайрим (Skyrim)"
+  },
+  {
+    "id": "skyrim_f_child",
+    "name": "Female Child",
+    "group": "Скайрим (Skyrim)"
+  },
+  {
+    "id": "skyrim_m_child",
+    "name": "Male Child",
+    "group": "Скайрим (Skyrim)"
+  },
+  {
+    "id": "skyrim_paarthurnax",
+    "name": "Paarthurnax",
+    "group": "Скайрим (Skyrim)"
+  },
+  {
+    "id": "skyrim_ulfric",
+    "name": "Ulfric",
+    "group": "Скайрим (Skyrim)"
+  },
+  {
+    "id": "skyrim_khajiit",
+    "name": "Каджит",
+    "group": "Скайрим (Skyrim)"
+  },
+  {
+    "id": "spongebob",
+    "name": "Spongebob",
+    "group": "Спанч-Боб (Spongebob)"
+  },
+  {
+    "id": "patrick",
+    "name": "Patrick",
+    "group": "Спанч-Боб (Spongebob)"
+  },
+  {
+    "id": "squidward",
+    "name": "Squidward",
+    "group": "Спанч-Боб (Spongebob)"
+  },
+  {
+    "id": "plankton",
+    "name": "Plankton",
+    "group": "Спанч-Боб (Spongebob)"
+  },
+  {
+    "id": "geralt",
+    "name": "Geralt",
+    "group": "Ведьмак (The Witcher) "
+  },
+  {
+    "id": "cirilla",
+    "name": "Cirilla",
+    "group": "Ведьмак (The Witcher) "
+  },
+  {
+    "id": "yennefer",
+    "name": "Yennefer",
+    "group": "Ведьмак (The Witcher) "
+  },
+  {
+    "id": "lambert",
+    "name": "Lambert",
+    "group": "Ведьмак (The Witcher) "
+  },
+  {
+    "id": "valorant_sage",
+    "name": "Valorant Sage",
+    "group": "Валорант (Valorant)"
+  },
+  {
+    "id": "hf_alex",
+    "name": "Alex",
+    "group": "Халф-Лайф (Half-Life)"
+  },
+  {
+    "id": "hf_father",
+    "name": "Father",
+    "group": "Халф-Лайф (Half-Life)"
+  },
+  {
+    "id": "hf_kleiner",
+    "name": "Kleiner",
+    "group": "Халф-Лайф (Half-Life)"
+  },
+  {
+    "id": "hf_barney",
+    "name": "Barney",
+    "group": "Халф-Лайф (Half-Life)"
+  },
+  {
+    "id": "bld_bear",
+    "name": "Bear",
+    "group": "Baldur's Gate 3"
+  },
+  {
+    "id": "bld_astarion",
+    "name": "Astarion",
+    "group": "Baldur's Gate 3"
+  },
+  {
+    "id": "bld_wyll",
+    "name": "Wyll",
+    "group": "Baldur's Gate 3"
+  },
+  {
+    "id": "shrek_bread",
+    "name": "Печенька",
+    "group": "Шрек"
+  },
+  {
+    "id": "shrek_puss",
+    "name": "Кот в сапогах",
+    "group": "Шрек"
+  },
+  {
+    "id": "shrek",
+    "name": "Шрек",
+    "group": "Шрек"
+  },
+  {
+    "id": "shrek_king",
+    "name": "Король",
+    "group": "Шрек"
+  },
+  {
+    "id": "hp_cedric",
+    "name": "Кедрик",
+    "group": "Гарри Поттер"
+  },
+  {
+    "id": "hp_dobby",
+    "name": "Добби",
+    "group": "Гарри Поттер"
+  },
+  {
+    "id": "hp_mcgonagall",
+    "name": "Мак Гонагалл",
+    "group": "Гарри Поттер"
+  },
+  {
+    "id": "hp_potter",
+    "name": "Гарри Поттер",
+    "group": "Гарри Поттер"
+  },
+  {
+    "id": "hp_voldemort",
+    "name": "Волендеморт",
+    "group": "Гарри Поттер"
+  },
+  {
+    "id": "hp_severus",
+    "name": "Северус",
+    "group": "Гарри Поттер"
+  },
+  {
+    "id": "hp_alastor",
+    "name": "Аластор",
+    "group": "Гарри Поттер"
+  },
+  {
+    "id": "slovo_patsana_marat",
+    "name": "Марат",
+    "group": "Слово Пацана"
+  },
+  {
+    "id": "slovo_patsana_angry_cop",
+    "name": "Злой Коп",
+    "group": "Слово Пацана"
+  },
+  {
+    "id": "slovo_patsana_brother",
+    "name": "Братан",
+    "group": "Слово Пацана"
+  },
+  {
+    "id": "slovo_patsana_cop",
+    "name": "Коп",
+    "group": "Слово Пацана"
+  },
+  {
+    "id": "slovo_patsana_koschei",
+    "name": "Кощей",
+    "group": "Слово Пацана"
+  },
+  {
+    "id": "slovo_patsana_main",
+    "name": "Главный",
+    "group": "Слово Пацана"
+  },
+  {
+    "id": "zarya",
+    "name": "Zarya",
+    "group": "Овервотч (Overwatch)"
+  },
+  {
+    "id": "mercy",
+    "name": "Mercy",
+    "group": "Овервотч (Overwatch)"
+  },
+  {
+    "id": "pharah",
+    "name": "Pharah",
+    "group": "Овервотч (Overwatch)"
+  },
+  {
+    "id": "brigitte",
+    "name": "Brigitte",
+    "group": "Овервотч (Overwatch)"
+  },
+  {
+    "id": "reaper",
+    "name": "Reaper",
+    "group": "Овервотч (Overwatch)"
+  },
+  {
+    "id": "lucio_ov",
+    "name": "Lucio ov",
+    "group": "Овервотч (Overwatch)"
+  },
+  {
+    "id": "widowmaker",
+    "name": "Widowmaker",
+    "group": "Овервотч (Overwatch)"
+  },
+  {
+    "id": "moira",
+    "name": "Moira",
+    "group": "Овервотч (Overwatch)"
+  },
+  {
+    "id": "sombra",
+    "name": "Sombra",
+    "group": "Овервотч (Overwatch)"
+  },
+  {
+    "id": "junkrat",
+    "name": "Junkrat",
+    "group": "Овервотч (Overwatch)"
+  },
+  {
+    "id": "soldier_76",
+    "name": "Soldier 76",
+    "group": "Овервотч (Overwatch)"
+  },
+  {
+    "id": "winston",
+    "name": "Winston",
+    "group": "Овервотч (Overwatch)"
+  },
+  {
+    "id": "roadhog",
+    "name": "Roadhog",
+    "group": "Овервотч (Overwatch)"
+  },
+  {
+    "id": "kiriko",
+    "name": "Kiriko",
+    "group": "Овервотч (Overwatch)"
+  },
+  {
+    "id": "ashe",
+    "name": "Ashe",
+    "group": "Овервотч (Overwatch)"
+  },
+  {
+    "id": "symmetra",
+    "name": "Symmetra",
+    "group": "Овервотч (Overwatch)"
+  },
+  {
+    "id": "ana",
+    "name": "Ana",
+    "group": "Овервотч (Overwatch)"
+  },
+  {
+    "id": "echo",
+    "name": "Echo",
+    "group": "Овервотч (Overwatch)"
+  },
+  {
+    "id": "genji",
+    "name": "Genji",
+    "group": "Овервотч (Overwatch)"
+  },
+  {
+    "id": "sigma",
+    "name": "Sigma",
+    "group": "Овервотч (Overwatch)"
+  },
+  {
+    "id": "baptiste",
+    "name": "Baptiste",
+    "group": "Овервотч (Overwatch)"
+  },
+  {
+    "id": "doomfist",
+    "name": "Doomfist",
+    "group": "Овервотч (Overwatch)"
+  },
+  {
+    "id": "cassidy",
+    "name": "Cassidy",
+    "group": "Овервотч (Overwatch)"
+  },
+  {
+    "id": "tracer",
+    "name": "Tracer",
+    "group": "Овервотч (Overwatch)"
+  },
+  {
+    "id": "hanzo",
+    "name": "Hanzo",
+    "group": "Овервотч (Overwatch)"
+  },
+  {
+    "id": "sojourn",
+    "name": "Sojourn",
+    "group": "Овервотч (Overwatch)"
+  },
+  {
+    "id": "training_robot",
+    "name": "Training robot",
+    "group": "Овервотч (Overwatch)"
+  },
+  {
+    "id": "dva_ov",
+    "name": "Dva ov",
+    "group": "Овервотч (Overwatch)"
+  },
+  {
+    "id": "junker_queen",
+    "name": "Junker queen",
+    "group": "Овервотч (Overwatch)"
+  },
+  {
+    "id": "drg_dwarves",
+    "name": "Dwarves",
+    "group": "Deep Rock Galactic"
+  },
+  {
+    "id": "drg_mission_control",
+    "name": "Mission Control",
+    "group": "Deep Rock Galactic"
+  },
+  {
+    "id": "an_alt_girl_inner",
+    "name": "Спокойный Санбой",
+    "group": "Санбой из Альтушка для Скуфа"
+  },
+  {
+    "id": "an_alt_girl_sunboy_s",
+    "name": "Грустный Санбой",
+    "group": "Санбой из Альтушка для Скуфа"
+  },
+  {
+    "id": "an_alt_girl_dlc_sunboy_n",
+    "name": "Манерный Санбой",
+    "group": "Санбой из Альтушка для Скуфа"
+  },
+  {
+    "id": "an_alt_girl_dlc_sunboy_k",
+    "name": "Шепелявый Санбой",
+    "group": "Санбой из Альтушка для Скуфа"
+  },
+  {
+    "id": "marine2_acheran",
+    "name": "Acheran",
+    "group": "Warhammer 40,000: Space Marine 2"
+  },
+  {
+    "id": "marine2_balthazar",
+    "name": "Balthazar",
+    "group": "Warhammer 40,000: Space Marine 2"
+  },
+  {
+    "id": "marine2_berserk",
+    "name": "Berserk",
+    "group": "Warhammer 40,000: Space Marine 2"
+  },
+  {
+    "id": "marine2_chairon",
+    "name": "Chairon",
+    "group": "Warhammer 40,000: Space Marine 2"
+  },
+  {
+    "id": "marine2_gadriel",
+    "name": "Gadriel",
+    "group": "Warhammer 40,000: Space Marine 2"
+  },
+  {
+    "id": "marine2_machine_spirit_4",
+    "name": "Machine Spirit 4",
+    "group": "Warhammer 40,000: Space Marine 2"
+  },
+  {
+    "id": "marine2_magos_galeo",
+    "name": "Magos Galeo",
+    "group": "Warhammer 40,000: Space Marine 2"
+  },
+  {
+    "id": "marine2_servo-skull",
+    "name": "Servo-skull",
+    "group": "Warhammer 40,000: Space Marine 2"
+  },
+  {
+    "id": "marine2_titus",
+    "name": "Titus",
+    "group": "Warhammer 40,000: Space Marine 2"
+  },
+  {
+    "id": "tlou_ellie",
+    "name": "Ellie",
+    "group": "The last of us"
+  },
+  {
+    "id": "tlou_joel",
+    "name": "Joel",
+    "group": "The last of us"
+  },
+  {
+    "id": "tlou_tess",
+    "name": "Tess",
+    "group": "The last of us"
+  },
+  {
+    "id": "narrator_d3",
+    "name": "Рассказчик",
+    "group": "Данженс 3 (Dungeons 3)"
+  },
+  {
+    "id": "evil_thalya",
+    "name": "Злая Талия",
+    "group": "Данженс 3 (Dungeons 3)"
+  },
+  {
+    "id": "good_thalya",
+    "name": "Добрая Талия",
+    "group": "Данженс 3 (Dungeons 3)"
+  },
+  {
+    "id": "bunny_boris_petrov_father",
+    "name": "boris petrov father",
+    "group": "Зайчик"
+  },
+  {
+    "id": "bunny_semen_baburin",
+    "name": "semen baburin",
+    "group": "Зайчик"
+  },
+  {
+    "id": "bunny_polina",
+    "name": "polina",
+    "group": "Зайчик"
+  },
+  {
+    "id": "bunny_kate_smirnova",
+    "name": "kate smirnova",
+    "group": "Зайчик"
+  },
+  {
+    "id": "bunny_romka",
+    "name": "romka",
+    "group": "Зайчик"
+  },
+  {
+    "id": "bunny_tihonov",
+    "name": "tihonov",
+    "group": "Зайчик"
+  },
+  {
+    "id": "bunny_karina_petrova",
+    "name": "karina petrova",
+    "group": "Зайчик"
+  },
+  {
+    "id": "ta_livsy",
+    "name": "Ливси",
+    "group": "Некоторые личности"
+  },
+  {
+    "id": "ycf",
+    "name": "Юра",
+    "group": "Некоторые личности"
+  },
+  {
+    "id": "marvel_tony",
+    "name": "Тони",
+    "group": "Некоторые личности"
+  },
+  {
+    "id": "anastasia",
+    "name": "Анастасия",
+    "group": "Некоторые личности"
+  },
+  {
+    "id": "annie",
+    "name": "Энни",
+    "group": "Некоторые личности"
+  },
+  {
+    "id": "villager",
+    "name": "Житель из Minecraft",
+    "group": "Некоторые личности"
+  },
+  {
+    "id": "papich",
+    "name": "Папич",
+    "group": "Некоторые личности"
+  },
+  {
+    "id": "angry_neco_arc",
+    "name": "Angry Neco arc",
+    "group": "Некоторые личности"
+  },
+  {
+    "id": "neco",
+    "name": "Neco",
+    "group": "Некоторые личности"
+  },
+  {
+    "id": "biden",
+    "name": "Biden",
+    "group": "Некоторые личности"
+  },
+  {
+    "id": "moriarti",
+    "name": "Мориарти",
+    "group": "Некоторые личности"
+  },
+  {
+    "id": "postal_dude",
+    "name": "Чувак из Postal 2",
+    "group": "Некоторые личности"
+  },
+  {
+    "id": "punisher",
+    "name": "Каратель",
+    "group": "Некоторые личности"
+  },
+  {
+    "id": "playboyztv",
+    "name": "Playboyztv",
+    "group": "Некоторые личности"
+  },
+  {
+    "id": "fl3_robert_maccready",
+    "name": "Роберт МакКриди",
+    "group": "Фоллаут 3 (Fallout 3)"
+  },
+  {
+    "id": "fl3_moira_brown",
+    "name": "Мойра Браун",
+    "group": "Фоллаут 3 (Fallout 3)"
+  },
+  {
+    "id": "fl3_threedog",
+    "name": "ТриДог",
+    "group": "Фоллаут 3 (Fallout 3)"
+  },
+  {
+    "id": "fl3_threedog_radio",
+    "name": "Радио ТриДог",
+    "group": "Фоллаут 3 (Fallout 3)"
+  },
+  {
+    "id": "fl3_mister_handy",
+    "name": "Мистер Хэнди",
+    "group": "Фоллаут 3 (Fallout 3)"
+  },
+  {
+    "id": "fl3_sarah_lyons",
+    "name": "Сара Лайонс",
+    "group": "Фоллаут 3 (Fallout 3)"
+  },
+  {
+    "id": "fl3_mister_gutsy",
+    "name": "Мистер Гатси",
+    "group": "Фоллаут 3 (Fallout 3)"
+  },
+  {
+    "id": "fl3_jericho",
+    "name": "Джерико",
+    "group": "Фоллаут 3 (Fallout 3)"
+  },
+  {
+    "id": "fl3_elder_lyons",
+    "name": "Старейшина Лайонс",
+    "group": "Фоллаут 3 (Fallout 3)"
+  },
+  {
+    "id": "fl3_colin_moriarty",
+    "name": "Колин Мориарти",
+    "group": "Фоллаут 3 (Fallout 3)"
+  },
+  {
+    "id": "fl3_sentrybot",
+    "name": "Сентрибот",
+    "group": "Фоллаут 3 (Fallout 3)"
+  },
+  {
+    "id": "fl3_john_henry_eden",
+    "name": "Джон Генри Эдем",
+    "group": "Фоллаут 3 (Fallout 3)"
+  },
+  {
+    "id": "fl3_super_mutant",
+    "name": "Супер-Мутант",
+    "group": "Фоллаут 3 (Fallout 3)"
+  },
+  {
+    "id": "hs_brukan",
+    "name": "Бру'кан",
+    "group": "Хартстоун (Hearthstone)"
+  },
+  {
+    "id": "hs_garrosh",
+    "name": "Гаррош Адский Крик",
+    "group": "Хартстоун (Hearthstone)"
+  },
+  {
+    "id": "hs_uther_hs",
+    "name": "Утер Светоносный",
+    "group": "Хартстоун (Hearthstone)"
+  },
+  {
+    "id": "tf_sniper",
+    "name": "Снайпер",
+    "group": "Тим Фортесс 2 (Team Fortress 2) "
+  },
+  {
+    "id": "tf_spy",
+    "name": "Шпион",
+    "group": "Тим Фортесс 2 (Team Fortress 2) "
+  },
+  {
+    "id": "tf_medic",
+    "name": "Медик",
+    "group": "Тим Фортесс 2 (Team Fortress 2) "
+  },
+  {
+    "id": "tf_engineer",
+    "name": "Инженер",
+    "group": "Тим Фортесс 2 (Team Fortress 2) "
+  },
+  {
+    "id": "tf_soldier",
+    "name": "Солдат",
+    "group": "Тим Фортесс 2 (Team Fortress 2) "
+  },
+  {
+    "id": "tf_heavy",
+    "name": "Хэви",
+    "group": "Тим Фортесс 2 (Team Fortress 2) "
+  },
+  {
+    "id": "tf_demoman",
+    "name": "Подрывник",
+    "group": "Тим Фортесс 2 (Team Fortress 2) "
+  },
+  {
+    "id": "ms_mita",
+    "name": "Мита",
+    "group": "МиСайд (MiSide)"
+  },
+  {
+    "id": "ms_mitadream",
+    "name": "Мита",
+    "group": "МиСайд (MiSide)"
+  },
+  {
+    "id": "ms_mitaghost",
+    "name": "Мита",
+    "group": "МиСайд (MiSide)"
+  },
+  {
+    "id": "ms_mitashorthairs",
+    "name": "Коротковолосая Мита",
+    "group": "МиСайд (MiSide)"
+  },
+  {
+    "id": "kingpin",
+    "name": "Kingpin: Life of Crime",
+    "group": "Некоторые личности"
+  },
+  {
+    "id": "hl_amit_thakkar",
+    "name": "Амит Таккар",
+    "group": "Хогвартс Наследие (Hogwarts Legacy)"
+  },
+  {
+    "id": "hl_eleazar_fig",
+    "name": "Элеазар Фиг",
+    "group": "Хогвартс Наследие (Hogwarts Legacy)"
+  },
+  {
+    "id": "hl_ernie_lark",
+    "name": "Эрни Ларк",
+    "group": "Хогвартс Наследие (Hogwarts Legacy)"
+  },
+  {
+    "id": "hl_ignatia_wildsmith",
+    "name": "Игнатия Уайлдсмит",
+    "group": "Хогвартс Наследие (Hogwarts Legacy)"
+  },
+  {
+    "id": "hl_lodgok",
+    "name": "Лодгок",
+    "group": "Хогвартс Наследие (Hogwarts Legacy)"
+  },
+  {
+    "id": "hl_phineas_black",
+    "name": "Финеас Найджелус Блэк",
+    "group": "Хогвартс Наследие (Hogwarts Legacy)"
+  },
+  {
+    "id": "hl_ranrok",
+    "name": "Ранрок",
+    "group": "Хогвартс Наследие (Hogwarts Legacy)"
+  },
+  {
+    "id": "hl_victor_rookwood",
+    "name": "Виктор Руквуд",
+    "group": "Хогвартс Наследие (Hogwarts Legacy)"
+  },
+  {
+    "id": "hl_zenobia_noke",
+    "name": "Зенобия Ноук",
+    "group": "Хогвартс Наследие (Hogwarts Legacy)"
+  },
+  {
+    "id": "hl_gladwin_moon",
+    "name": "Глэдвин Мун",
+    "group": "Хогвартс Наследие (Hogwarts Legacy)"
+  },
+  {
+    "id": "hl_matilda_weasley",
+    "name": "Матильда Уизли",
+    "group": "Хогвартс Наследие (Hogwarts Legacy)"
+  },
+  {
+    "id": "hl_natsai_onai",
+    "name": "Натсай Онай",
+    "group": "Хогвартс Наследие (Hogwarts Legacy)"
+  },
+  {
+    "id": "hl_ominis_gaunt",
+    "name": "Оминис Мракс",
+    "group": "Хогвартс Наследие (Hogwarts Legacy)"
+  },
+  {
+    "id": "hl_poppy_sweeting",
+    "name": "Поппи Добринг",
+    "group": "Хогвартс Наследие (Hogwarts Legacy)"
+  },
+  {
+    "id": "hl_generic_goblin_c",
+    "name": "Гоблин В",
+    "group": "Хогвартс Наследие (Hogwarts Legacy)"
+  },
+  {
+    "id": "hl_dinah_hecat",
+    "name": "Дина Гекат",
+    "group": "Хогвартс Наследие (Hogwarts Legacy)"
+  },
+  {
+    "id": "hl_aesop_sharp",
+    "name": "Эзоп Шарп",
+    "group": "Хогвартс Наследие (Hogwarts Legacy)"
+  },
+  {
+    "id": "hl_abraham_ronen",
+    "name": "Абрахам Ронен",
+    "group": "Хогвартс Наследие (Hogwarts Legacy)"
+  },
+  {
+    "id": "hl_samantha_dale",
+    "name": "Саманта Дейл",
+    "group": "Хогвартс Наследие (Hogwarts Legacy)"
+  },
+  {
+    "id": "hl_sirona_ryan",
+    "name": "Сирона Райан",
+    "group": "Хогвартс Наследие (Hogwarts Legacy)"
+  },
+  {
+    "id": "hl_sophronia_franklin",
+    "name": "Софрония Франклин",
+    "group": "Хогвартс Наследие (Hogwarts Legacy)"
+  },
+  {
+    "id": "hl_everett_clopton",
+    "name": "Эверетт Клоптон",
+    "group": "Хогвартс Наследие (Hogwarts Legacy)"
+  },
+  {
+    "id": "hl_generic_goblin_b",
+    "name": "Гоблин Б",
+    "group": "Хогвартс Наследие (Hogwarts Legacy)"
+  },
+  {
+    "id": "hl_sanctuary_house_elf",
+    "name": "Домовой эльф",
+    "group": "Хогвартс Наследие (Hogwarts Legacy)"
+  }
+]

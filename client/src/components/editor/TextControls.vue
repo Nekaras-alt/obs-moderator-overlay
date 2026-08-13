@@ -6,13 +6,15 @@
   double-clicking the layer on the stage.
 -->
 <template>
-  <fieldset v-if="layer?.type === 'text'">
-    <legend>Text</legend>
+  <fieldset v-if="layer?.type === 'text' || layer?.type === 'timer' || layer?.type === 'counter'" class="fluent-fieldset">
+    <legend>{{ layer?.type === 'text' ? 'Text' : 'Style' }}</legend>
 
-    <label>Content
-      <textarea rows="2" :value="tx.content" @change="set('content', $event.target.value)"></textarea>
-    </label>
-    <p class="hint muted small">Tip: double-click the text on the stage to edit it in place.</p>
+    <template v-if="layer?.type === 'text'">
+      <label>Content
+        <textarea rows="2" :value="tx.content" @change="set('content', $event.target.value)"></textarea>
+      </label>
+      <p class="hint muted small">Tip: double-click the text on the stage to edit it in place.</p>
+    </template>
 
     <div class="row2">
       <label>Font
@@ -40,8 +42,8 @@
     </div>
 
     <div class="btn-group">
-      <button :class="{ active: tx.bold }" @click="set('bold', !tx.bold)"><b>B</b></button>
-      <button :class="{ active: tx.italic }" @click="set('italic', !tx.italic)"><i>I</i></button>
+      <Button size="icon" class="h-8 w-8" :variant="tx.bold ? 'default' : 'secondary'" @click="set('bold', !tx.bold)"><b>B</b></Button>
+      <Button size="icon" class="h-8 w-8" :variant="tx.italic ? 'default' : 'secondary'" @click="set('italic', !tx.italic)"><i>I</i></Button>
     </div>
 
     <div class="sub-section">
@@ -110,6 +112,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useSceneStore } from '../../stores/scene.js'
+import { Button } from '@/components/ui/button'
 
 const props = defineProps({ layer: Object })
 const scene = useSceneStore()
@@ -150,12 +153,6 @@ label.row { flex-direction: row; align-items: center; gap: 8px; }
 .sub-section { border-top: 1px solid var(--border); padding-top: 8px; margin-top: 8px; display: flex; flex-direction: column; gap: 8px; }
 .sub-title { font-size: 11px; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: .5px; }
 .btn-group { display: flex; gap: 6px; }
-.btn-group button {
-  width: 36px; height: 30px;
-  border: 1px solid var(--border); border-radius: 5px;
-  background: var(--bg); color: var(--text); cursor: pointer; font-size: 14px;
-}
-.btn-group button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
 textarea { resize: vertical; font-family: inherit; }
 input[type="color"] { height: 28px; padding: 0; cursor: pointer; }
 </style>

@@ -5,27 +5,33 @@
 
 import fs from 'node:fs'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
-import { createInitialScene, createLayer } from '../shared/schema.js'
+import { createInitialScene, emptySoundpad, SOUNDPAD_SLOTS } from '../shared/schema.js'
+import { DATA_DIR, ensureDirs } from './config/paths.js'
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const DATA_DIR = path.join(__dirname, '..', 'data')
 const SCENE_FILE = path.join(DATA_DIR, 'scene.json')
 const BACKUP_FILE = path.join(DATA_DIR, 'scene.bak.json')
 const AUTOSAVE_INTERVAL = 30_000
+
+// Ops that warrant a full scene broadcast (vs incremental patch).
+export const FULL_SYNC_OPS = new Set([
+  'addLayer', 'deleteLayer', 'restoreLayer', 'purgeTrash', 'reorder',
+  'clearWorkspace', 'loadPreset', 'replaceScene', 'addFolder', 'removeFolder',
+  'savePreset', 'removePreset'
+])
 
 class StateStore {
   constructor() {
     this.scene = null
     this.dirty = false
     this.lastSavedAt = 0
+    this.rev = 0
     this._ensureDataDir()
     this.load()
     this._startAutosave()
   }
 
   _ensureDataDir() {
-    if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true })
+    ensureDirs()
   }
 
   // Load with crash-recovery: keep a .bak of the last good save. If the main
@@ -46,6 +52,16 @@ class StateStore {
       const defaults = createInitialScene()
     this.scene = { ...defaults, ...this.scene }
     this.scene.settings = { ...defaults.settings, ...(this.scene.settings || {}) }
+    // Heal the SoundPad row: backfill slots on older saves that predate the
+    // field, and pad/truncate to the current slot count so a schema bump never
+    // leaves a partial row. Existing slot contents are preserved.
+    const pad = emptySoundpad()
+    const loaded = Array.isArray(this.scene.soundpad) ? this.scene.soundpad.slice(0, SOUNDPAD_SLOTS) : []
+    this.scene.soundpad = pad.map((slot, i) =>
+      loaded[i] && typeof loaded[i] === 'object'
+        ? { name: '', src: '', volume: 1, color: '#3b82f6', ...loaded[i] }
+        : slot
+    )
     console.log(`[state] loaded scene with ${this.scene.layers.length} layers`)
   }
 
@@ -89,8 +105,20 @@ class StateStore {
     return JSON.parse(JSON.stringify(this.scene))
   }
 
-  // Apply a patch operation. Returns { ok, error? }.
+  // Apply a patch operation. Returns { ok, error?, rev?, kind? }.
   apply(op) {
+    const s = this.scene
+    const result = this._applyInner(op)
+    if (result.ok) {
+      this.rev++
+      result.rev = this.rev
+      result.kind = op.kind
+      result.fullSync = FULL_SYNC_OPS.has(op.kind)
+    }
+    return result
+  }
+
+  _applyInner(op) {
     const s = this.scene
     switch (op.kind) {
       case 'addLayer': {
@@ -191,6 +219,19 @@ class StateStore {
       }
       case 'forceSave': {
         this.save(true)
+        return { ok: true }
+      }
+      case 'updateSoundpad': {
+        // Replace one slot in the fixed 10-slot row. op.slotId is 0..9, op.slot
+        // is the new slot object. Bound-checked so a bad id can't overflow the row.
+        const id = Math.floor(op.slotId)
+        if (id < 0 || id >= SOUNDPAD_SLOTS) return { ok: false, error: 'slot out of range' }
+        if (!op.slot || typeof op.slot !== 'object') return { ok: false, error: 'bad slot' }
+        if (!Array.isArray(s.soundpad) || s.soundpad.length !== SOUNDPAD_SLOTS) {
+          s.soundpad = emptySoundpad()
+        }
+        s.soundpad[id] = { name: '', src: '', volume: 1, color: '#3b82f6', ...op.slot }
+        this.markDirty()
         return { ok: true }
       }
       default:

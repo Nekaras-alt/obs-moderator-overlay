@@ -1,43 +1,182 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/* Fluent / WinUI 3 tokens layered on top of shadcn-compatible CSS variables.
+   Legacy --bg/--panel/--accent aliases keep existing editor CSS working. */
+@theme inline {
+  --font-sans: "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 8px;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--secondary);
+  --color-accent-foreground: var(--secondary-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+}
+
 /* Global resets + CSS variables for both dark and light themes.
    The /obs view sets background:transparent so OBS composites it over the
    scene; the editor uses the themed background. */
 * { box-sizing: border-box; }
 html, body, #app { height: 100%; margin: 0; }
 body {
-  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   background: var(--bg);
   color: var(--text);
   overflow: hidden;
 }
 
+/* OBS Browser / frame-bridge target: must be fully transparent for compositing */
+html.omo-obs-transparent,
+html.omo-obs-transparent body,
+html.omo-obs-transparent #app {
+  background: transparent !important;
+  background-color: rgba(0, 0, 0, 0) !important;
+  color: inherit;
+}
+
 :root, .theme-dark {
+  --titlebar-h: 36px;
+  --background: #1b1c1f;
+  --foreground: #e9eaed;
+  --card: #202225;
+  --card-foreground: #e9eaed;
+  --popover: #25262b;
+  --popover-foreground: #e9eaed;
+  --primary: #0078d4;
+  --primary-foreground: #ffffff;
+  --secondary: #2c2f34;
+  --secondary-foreground: #e9eaed;
+  --muted: #2c2f34;
+  --muted-foreground: #9aa0a6;
+  --accent: #2c2f34;
+  --accent-foreground: #e9eaed;
+  --destructive: #ef4444;
+  --border: #3a3d42;
+  --input: #3a3d42;
+  --ring: #0078d4;
+
+  /* Fluent extras */
+  --fluent-accent: #0078d4;
+  --fluent-accent-hover: #1a86d9;
+  --fluent-stroke: rgba(255, 255, 255, 0.09);
+  --fluent-acrylic: rgba(32, 34, 37, 0.82);
+  --fluent-elevation: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --fluent-reveal: rgba(255, 255, 255, 0.06);
+
+  /* Motion tokens */
+  --fluent-duration-fast: 100ms;
+  --fluent-duration: 160ms;
+  --fluent-duration-slow: 240ms;
+  --fluent-ease: cubic-bezier(0.1, 0.9, 0.2, 1);
+
+  /* Density — comfortable default */
+  --shell-command-h: 48px;
+  --shell-status-h: 36px;
+  --shell-nav-item-h: 32px;
+  --shell-nav-head-h: 40px;
+  --shell-inspector-head-h: 36px;
+  --shell-gap: 8px;
+
+  /* Legacy aliases (existing components) */
   --bg: #1b1c1f;
   --bg-2: #232529;
   --bg-3: #2c2f34;
   --panel: #202225;
-  --border: #3a3d42;
   --text: #e9eaed;
   --text-dim: #9aa0a6;
-  --accent: #3b82f6;
-  --accent-2: #60a5fa;
+  --accent: #0078d4;
+  --accent-2: #1a86d9;
   --danger: #ef4444;
   --ok: #22c55e;
-  --shadow: 0 8px 24px rgba(0,0,0,.35);
+  --hover: #2c2f34;
+  --shadow: var(--fluent-elevation);
 }
+
 .theme-light {
+  --background: #f4f5f7;
+  --foreground: #1b1c1f;
+  --card: #ffffff;
+  --card-foreground: #1b1c1f;
+  --popover: #ffffff;
+  --popover-foreground: #1b1c1f;
+  --primary: #0078d4;
+  --primary-foreground: #ffffff;
+  --secondary: #e9ecef;
+  --secondary-foreground: #1b1c1f;
+  --muted: #e9ecef;
+  --muted-foreground: #5f6571;
+  --accent: #e9ecef;
+  --accent-foreground: #1b1c1f;
+  --destructive: #dc2626;
+  --border: #d0d4da;
+  --input: #d0d4da;
+  --ring: #0078d4;
+
+  --fluent-accent: #0078d4;
+  --fluent-accent-hover: #106ebe;
+  --fluent-stroke: rgba(0, 0, 0, 0.08);
+  --fluent-acrylic: rgba(255, 255, 255, 0.82);
+  --fluent-elevation: 0 8px 24px rgba(0, 0, 0, 0.12);
+  --fluent-reveal: rgba(0, 0, 0, 0.04);
+
+  --fluent-duration-fast: 100ms;
+  --fluent-duration: 160ms;
+  --fluent-duration-slow: 240ms;
+  --fluent-ease: cubic-bezier(0.1, 0.9, 0.2, 1);
+
+  --shell-command-h: 48px;
+  --shell-status-h: 36px;
+  --shell-nav-item-h: 32px;
+  --shell-nav-head-h: 40px;
+  --shell-inspector-head-h: 36px;
+  --shell-gap: 8px;
+
   --bg: #f4f5f7;
   --bg-2: #ffffff;
   --bg-3: #e9ecef;
   --panel: #ffffff;
-  --border: #d0d4da;
   --text: #1b1c1f;
   --text-dim: #5f6571;
-  --accent: #2563eb;
-  --accent-2: #3b82f6;
+  --accent: #0078d4;
+  --accent-2: #106ebe;
   --danger: #dc2626;
   --ok: #16a34a;
-  --shadow: 0 8px 24px rgba(0,0,0,.12);
+  --hover: #e9ecef;
+  --shadow: var(--fluent-elevation);
+}
+
+/* Compact density */
+.density-compact {
+  --shell-command-h: 40px;
+  --shell-status-h: 28px;
+  --shell-nav-item-h: 28px;
+  --shell-nav-head-h: 32px;
+  --shell-inspector-head-h: 28px;
+  --shell-gap: 4px;
+}
+.density-comfortable {
+  --shell-command-h: 48px;
+  --shell-status-h: 36px;
+  --shell-nav-item-h: 32px;
+  --shell-nav-head-h: 40px;
+  --shell-inspector-head-h: 36px;
+  --shell-gap: 8px;
 }
 
 button {
@@ -50,10 +189,79 @@ button {
   padding: 6px 10px;
 }
 button:hover { background: var(--bg-2); }
-button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-button.primary:hover { background: var(--accent-2); }
+button.primary { background: var(--fluent-accent); border-color: var(--fluent-accent); color: #fff; }
+button.primary:hover { background: var(--fluent-accent-hover); }
 button.danger { background: transparent; color: var(--danger); border-color: var(--danger); }
-input, select {
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, a:focus-visible {
+  outline: 2px solid var(--fluent-accent);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .fluent-panel-enter-active,
+  .fluent-panel-leave-active {
+    transition: none !important;
+  }
+}
+
+/* High contrast / forced-colors (Windows HC, etc.) */
+@media (forced-colors: active) {
+  :root, .theme-dark, .theme-light {
+    --fluent-stroke: CanvasText;
+    --fluent-accent: Highlight;
+    --fluent-acrylic: Canvas;
+    --border: CanvasText;
+    --text: CanvasText;
+    --text-dim: GrayText;
+    --bg: Canvas;
+    --panel: Canvas;
+  }
+  button, .fluent-transport .t-btn, .fluent-transport .yt-btn {
+    border: 1px solid ButtonText;
+  }
+  .selection, .handle { outline-color: Highlight; border-color: Highlight; }
+}
+
+@media (max-width: 900px) {
+  body { font-size: 14px; }
+}
+
+/* Skip link — a11y */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 10000;
+  padding: 8px 14px;
+  background: var(--fluent-accent);
+  color: #fff;
+  border-radius: 0 0 8px 0;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.skip-link:focus {
+  left: 0;
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+/* Monitor-aware shell padding (1366 / 1920 / 2560 / ultrawide) */
+@media (min-width: 1920px) {
+  .shell-main { padding: 0; }
+}
+@media (min-width: 2560px) {
+  .shell-main { --shell-canvas-pad: 12px; }
+}
+@media (min-width: 3000px) {
+  .shell-main { --shell-canvas-pad: 20px; }
+}
+input, select, textarea {
   font-family: inherit;
   background: var(--bg);
   color: var(--text);
@@ -62,3 +270,445 @@ input, select {
   padding: 6px 8px;
 }
 .muted { color: var(--text-dim); }
+
+/* Floating editor panels — Fluent acrylic chrome */
+.preset-panel,
+.trash-panel,
+.obs-panel,
+.emote-panel,
+.sp-panel,
+.tc-panel,
+.qs-panel,
+.panel,
+.thub-panel,
+.op-float,
+.ts-float,
+.tp-float,
+.yt-win,
+.ym-bar {
+  background: var(--fluent-acrylic) !important;
+  border-color: var(--fluent-stroke) !important;
+  box-shadow: var(--fluent-elevation) !important;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+/* Phase 2 — shared Fluent content chrome inside panels / inspector */
+.fluent-panel-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--fluent-stroke);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  flex-shrink: 0;
+}
+.fluent-panel-head .spacer { flex: 1; min-width: 0; }
+.fluent-panel-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.fluent-panel-title svg { flex-shrink: 0; opacity: 0.9; }
+.fluent-fieldset,
+fieldset {
+  border: 1px solid var(--fluent-stroke);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin: 0 0 10px;
+  background: color-mix(in srgb, var(--bg-3) 35%, transparent);
+}
+.fluent-fieldset legend,
+fieldset legend {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+  padding: 0 4px;
+}
+.fluent-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--fluent-stroke);
+  flex-shrink: 0;
+}
+.fluent-tabs button {
+  flex: 1;
+  padding: 6px 8px;
+  font-size: 12px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-dim);
+}
+.fluent-tabs button:hover { background: var(--fluent-reveal); color: var(--text); }
+.fluent-tabs button.active {
+  background: color-mix(in srgb, var(--fluent-accent) 18%, transparent);
+  border-color: color-mix(in srgb, var(--fluent-accent) 40%, transparent);
+  color: var(--text);
+  position: relative;
+}
+.fluent-tabs button.active::after {
+  content: '';
+  position: absolute;
+  left: 20%;
+  right: 20%;
+  bottom: 2px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--fluent-accent);
+  transform: scaleX(1);
+  transition: transform var(--fluent-duration-fast) var(--fluent-ease);
+}
+.fluent-transport {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.fluent-transport .t-btn,
+.fluent-transport .yt-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 6px 10px;
+  font-size: 12px;
+  border: 1px solid var(--fluent-stroke);
+  border-radius: 6px;
+  background: var(--bg-3);
+  color: var(--text);
+  cursor: pointer;
+  transition:
+    background var(--fluent-duration) var(--fluent-ease),
+    border-color var(--fluent-duration) var(--fluent-ease),
+    transform var(--fluent-duration-fast) var(--fluent-ease);
+}
+.fluent-transport .t-btn:hover,
+.fluent-transport .yt-btn:hover { background: var(--fluent-reveal); }
+.fluent-transport .t-btn.active,
+.fluent-transport .yt-btn.active {
+  background: var(--fluent-accent);
+  border-color: var(--fluent-accent);
+  color: #fff;
+}
+
+/* Light-theme panel parity helpers */
+.theme-light .dock-chat,
+.theme-light .dock-player { border-color: var(--fluent-stroke); }
+.theme-light .fluent-panel-head { color: var(--text); }
+.fluent-seek {
+  flex: 1;
+  height: 6px;
+  background: var(--bg-3);
+  border: 1px solid var(--fluent-stroke);
+  border-radius: 3px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  min-width: 48px;
+}
+.fluent-seek .fill,
+.fluent-seek .t-progress {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  background: var(--fluent-accent);
+  border-radius: 3px;
+}
+
+/* Shared floating window chrome (AppFloatWindow / YT / PiP) */
+.fluent-float {
+  position: fixed;
+  z-index: 120;
+  display: flex;
+  flex-direction: column;
+  min-width: 200px;
+  width: fit-content;
+  overflow: hidden;
+  border-radius: 8px;
+  border: 1px solid var(--fluent-stroke);
+  background: var(--fluent-acrylic);
+  box-shadow: var(--fluent-elevation);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+.fluent-float.is-minimized { width: auto; }
+.fluent-float-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px 6px 10px;
+  border-bottom: 1px solid var(--fluent-stroke);
+  background: color-mix(in srgb, var(--bg-2) 80%, transparent);
+  cursor: grab;
+  user-select: none;
+  font-size: 12px;
+}
+.fluent-float-head:active { cursor: grabbing; }
+.fluent-float-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fluent-float-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  -webkit-app-region: no-drag;
+}
+.fluent-float-body {
+  position: relative;
+  min-height: 0;
+  background: var(--bg-2, #1e1f22);
+}
+
+/* Shell panel enter/leave — slide + fade (Fluent tokens) */
+.fluent-panel-enter-active {
+  transition:
+    opacity var(--fluent-duration) var(--fluent-ease),
+    transform var(--fluent-duration-slow) var(--fluent-ease);
+}
+.fluent-panel-leave-active {
+  transition:
+    opacity var(--fluent-duration-fast) var(--fluent-ease),
+    transform var(--fluent-duration) var(--fluent-ease);
+}
+.fluent-panel-enter-from {
+  opacity: 0;
+  transform: translateY(-10px) translateX(6px) scale(0.96);
+}
+.fluent-panel-leave-to {
+  opacity: 0;
+  transform: translateY(-4px) scale(0.98);
+}
+
+/* Float window enter/leave */
+.fluent-float-enter-active,
+.fluent-float-leave-active {
+  transition:
+    opacity var(--fluent-duration) var(--fluent-ease),
+    transform var(--fluent-duration-slow) var(--fluent-ease);
+}
+.fluent-float-enter-from,
+.fluent-float-leave-to {
+  opacity: 0;
+  transform: translateY(8px) scale(0.97);
+}
+
+/* Perform mode chrome */
+.perform-mode-enter-active,
+.perform-mode-leave-active {
+  transition:
+    opacity var(--fluent-duration-slow) var(--fluent-ease),
+    transform var(--fluent-duration-slow) var(--fluent-ease);
+}
+.perform-mode-enter-from,
+.perform-mode-leave-to {
+  opacity: 0;
+  transform: translateY(12px);
+}
+
+/* Theme crossfade overlay */
+.theme-fade-enter-active,
+.theme-fade-leave-active {
+  transition: opacity var(--fluent-duration) var(--fluent-ease);
+  pointer-events: none;
+}
+.theme-fade-enter-from,
+.theme-fade-leave-to {
+  opacity: 0;
+}
+.theme-flash-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  background: var(--bg);
+  opacity: 0.35;
+}
+
+/* List stagger (Ship 3) — children animate in sequence */
+.list-stagger > * {
+  animation: list-stagger-in var(--fluent-duration-slow) var(--fluent-ease) both;
+}
+.list-stagger > *:nth-child(1) { animation-delay: 0ms; }
+.list-stagger > *:nth-child(2) { animation-delay: 20ms; }
+.list-stagger > *:nth-child(3) { animation-delay: 40ms; }
+.list-stagger > *:nth-child(4) { animation-delay: 60ms; }
+.list-stagger > *:nth-child(5) { animation-delay: 80ms; }
+.list-stagger > *:nth-child(6) { animation-delay: 100ms; }
+.list-stagger > *:nth-child(7) { animation-delay: 120ms; }
+.list-stagger > *:nth-child(8) { animation-delay: 140ms; }
+.list-stagger > *:nth-child(9) { animation-delay: 160ms; }
+.list-stagger > *:nth-child(10) { animation-delay: 180ms; }
+.list-stagger > *:nth-child(n+11) { animation-delay: 200ms; }
+@keyframes list-stagger-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Selection handles scale-in */
+.selection .handle {
+  animation: handle-in var(--fluent-duration) var(--fluent-ease) both;
+}
+@keyframes handle-in {
+  from { opacity: 0; transform: scale(0.6); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* Tab / chip content fade */
+.tab-fade-enter-active,
+.tab-fade-leave-active {
+  transition: opacity var(--fluent-duration-fast) var(--fluent-ease), transform var(--fluent-duration-fast) var(--fluent-ease);
+}
+.tab-fade-enter-from,
+.tab-fade-leave-to {
+  opacity: 0;
+  transform: translateY(4px);
+}
+
+/* Nav item press */
+.nav-press:active {
+  transform: scale(0.97);
+  transition: transform var(--fluent-duration-fast) var(--fluent-ease);
+}
+
+/* No transform animations while canvas dragging */
+.canvas.dragging,
+.canvas.dragging * {
+  transition: none !important;
+  animation: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .list-stagger > *,
+  .selection .handle {
+    animation: none !important;
+  }
+  .fluent-float-enter-active,
+  .fluent-float-leave-active,
+  .perform-mode-enter-active,
+  .perform-mode-leave-active,
+  .theme-fade-enter-active,
+  .theme-fade-leave-active,
+  .tab-fade-enter-active,
+  .tab-fade-leave-active {
+    transition: none !important;
+  }
+}
+
+/* Perform mode floating exit chrome */
+.perform-exit {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: var(--fluent-acrylic);
+  border: 1px solid var(--fluent-stroke);
+  box-shadow: var(--fluent-elevation);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  font-size: 12px;
+  color: var(--text);
+}
+
+/* Perform mode 2.0 — floating SoundPad strip (canvas stays visible) */
+.perform-strip {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  max-width: min(96vw, 1100px);
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--fluent-acrylic);
+  border: 1px solid var(--fluent-stroke);
+  box-shadow: var(--fluent-elevation);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+.perform-pad {
+  display: grid;
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  gap: 6px;
+}
+.perform-pad-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 64px;
+  padding: 6px 4px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--btn-color, #3b82f6) 55%, var(--fluent-stroke));
+  background: color-mix(in srgb, var(--btn-color, #3b82f6) 28%, transparent);
+  color: var(--text);
+  cursor: pointer;
+  transition: transform 0.08s ease, filter 0.12s ease, opacity 0.12s ease;
+}
+.perform-pad-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(1.08);
+}
+.perform-pad-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.perform-pad-btn.playing {
+  outline: 2px solid var(--fluent-accent);
+  outline-offset: 1px;
+}
+.perform-pad-btn.empty,
+.perform-pad-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.perform-fkey {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+}
+.perform-name {
+  font-size: 11px;
+  font-weight: 600;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.perform-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+@media (max-width: 900px) {
+  .perform-pad {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}

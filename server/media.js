@@ -10,7 +10,10 @@ import crypto from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const UPLOAD_DIR = path.join(__dirname, '..', 'uploads')
+// In Electron packaged app, uploads/ is writable via OMO_UPLOADS_DIR (userData).
+const ROOT = path.join(__dirname, '..')
+const RESOURCES = process.resourcesPath || ROOT
+const UPLOAD_DIR = process.env.OMO_UPLOADS_DIR || (fs.existsSync(path.join(RESOURCES, 'uploads')) ? path.join(RESOURCES, 'uploads') : path.join(ROOT, 'uploads'))
 
 const MAX_BYTES = Number(process.env.UPLOAD_MAX_BYTES) || 200 * 1024 * 1024 // 200 MB default
 

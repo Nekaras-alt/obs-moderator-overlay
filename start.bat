@@ -4,7 +4,7 @@ REM  OBS Moderator Overlay - one-click launcher
 REM ============================================================
 REM  First run: installs npm deps, builds the client, starts server.
 REM  After that: just starts the server (rebuilds if dist/ is missing).
-REM  The server prints the moderator PIN and the OBS Browser Source URL.
+REM  First launch: create a PIN in the browser. Then share it with mods.
 REM ============================================================
 setlocal
 cd /d "%~dp0"

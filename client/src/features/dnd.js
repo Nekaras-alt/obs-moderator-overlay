@@ -1,6 +1,6 @@
 // client/src/features/dnd.js
 // Composable: handles drag-over/drop of files + URLs and the preload-gate
-// confirmation dialog. Used by both the Toolbar (narrow strip drop zone) and
+// confirmation dialog. Used by AppCommandBar / EditorView shell drop zones.
 // EditorView (full-shell drop zone) so the upload logic lives in one place.
 
 import { ref, computed } from 'vue'
@@ -26,17 +26,42 @@ export function useDnd() {
   const scene = useSceneStore()
 
   const dragOver = ref(false)
+  const dragFileCount = ref(0)
   const dontAskPreload = ref(false)
   const preloadOpen = ref(false)
   const preloadPending = ref([])
   const preloadTotal = computed(() => preloadPending.value.reduce((s, f) => s + (f.size || 0), 0))
 
   // Called by drag-over / drag-leave handlers on whatever element uses this.
-  function onDragOver(e) { e.preventDefault(); dragOver.value = true }
-  function onDragLeave(e) { e.preventDefault(); dragOver.value = false }
+  // Ignores internal drags (SoundPad slot swaps) — only reacts to file/URL
+  // drags from outside the app (desktop, browser tab).
+  function onDragOver(e) {
+    // Internal drags (text/plain only, no Files) are SoundPad slot swaps —
+    // don't show the "Drop to add media" hint for those.
+    const types = Array.from(e.dataTransfer?.types || [])
+    if (!types.includes('Files') && !types.includes('text/uri-list')) return
+    e.preventDefault()
+    dragOver.value = true
+    const items = e.dataTransfer?.items
+    if (items?.length) {
+      let n = 0
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].kind === 'file') n++
+      }
+      dragFileCount.value = n
+    } else {
+      dragFileCount.value = 0
+    }
+  }
+  function onDragLeave(e) {
+    e.preventDefault()
+    dragOver.value = false
+    dragFileCount.value = 0
+  }
 
   async function onDrop(e) {
     dragOver.value = false
+    dragFileCount.value = 0
     e.preventDefault()
     const files = Array.from(e.dataTransfer?.files || [])
     if (files.length) { addFiles(files); return }
@@ -45,7 +70,7 @@ export function useDnd() {
     if (text) addUrl(text)
   }
 
-  // Programmatic file add (used by the file-picker button in Toolbar).
+  // Programmatic file add (used by the file-picker button in AppCommandBar).
   async function addFilesFromInput(files) {
     const filtered = files.filter(Boolean)
     if (!filtered.length) return
@@ -100,6 +125,7 @@ export function useDnd() {
 
   return {
     dragOver,
+    dragFileCount,
     preloadOpen,
     preloadPending,
     preloadTotal,

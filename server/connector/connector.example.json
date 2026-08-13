@@ -1,0 +1,18 @@
+# Example connector config — copy to data/connector.json and edit URLs.
+# Recommended primary path: outbound WSS relay + join code (not Tailscale).
+{
+  "enabled": true,
+  "preferredProfile": "relay",
+  "preferredRegion": "auto",
+  "multiHome": true,
+  "failover": true,
+  "bindHostOnly": true,
+  "harden": true,
+  "relays": [
+    { "id": "eu", "url": "wss://relay-eu.YOURDOMAIN/connector", "region": "eu" },
+    { "id": "ru", "url": "wss://relay-ru.YOURDOMAIN/connector", "region": "ru" }
+  ],
+  "headscaleUrl": "",
+  "cloudflareHostname": "",
+  "wireguard": null
+}

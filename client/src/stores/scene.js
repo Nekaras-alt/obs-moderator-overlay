@@ -19,6 +19,13 @@ export const useSceneStore = defineStore('scene', {
     // OBS bridge: native source boundaries from OBS (editor-only overlay).
     obsSources: [],
     obsConnected: false,
+    obsLayoutRev: 0,
+    obsLayoutTarget: 'program', // program | preview
+    obsStudioMode: false,
+    obsProgramScene: '',
+    obsPreviewScene: '',
+    obsSelectedId: null,
+    obsPreviewStatus: null,
     // Temporary objects: absolute expiry (ms epoch) per layer id, and the
     // display map of seconds remaining (updated every second by _ttlTick).
     // ttlExpiresAt is the source of truth; ttlRemaining is its read-out.
@@ -31,18 +38,91 @@ export const useSceneStore = defineStore('scene', {
     // (current/duration/playing) pushed back up from the renderer for the
     // transport bars; not authoritative, not persisted.
     mediaCtrl: {},
-    mediaState: {}
+    mediaState: {},
+    // Authoritative YouTube timelines (serverClock / moderatorMaster).
+    // id -> { playing, mediaTime, wallClock, rate, stop, nonce }
+    ytTimeline: {},
+    // Soft sync status from StageRenderer (editor UI): id -> { correcting, driftMs }
+    ytSyncStatus: {},
+    // SoundPad row: 10 trigger slots (server-authoritative, persisted). Each
+    // { name, src, volume, color }. Healed to length 10 by the server.
+    soundpad: [],
+    // Transient SoundPad play signal: { src, volume, stopAll, nonce }. Replaced
+    // wholesale on every broadcast (the nonce lets repeats re-fire). SoundPlayer
+    // watches this and plays; not persisted.
+    pendingSound: null,
+    // Which pad slot is currently playing (for visual feedback). Set by
+    // SoundPlayer when a sound starts, cleared when it ends or stopAll fires.
+    playingSlotId: null,
+    // Live moderator presence (WS).
+    presence: [],
+    // Scene revision from server (patch protocol).
+    rev: 0,
+    // Donation queue mirror.
+    donationQueue: { paused: false, current: null, pending: [], log: [] },
+    // Undo / redo stacks (client-side, max 50).
+    _undoStack: [],
+    _redoStack: []
   }),
   getters: {
     selected: (s) => s.layers.find((l) => l.id === s.selectedId) || null,
-    // Layers sorted by stacking order (front = last, like OBS).
-    orderedLayers: (s) => [...s.layers].sort((a, b) => (a.order || 0) - (b.order || 0))
+    orderedLayers: (s) => [...s.layers].sort((a, b) => (a.order || 0) - (b.order || 0)),
+    moderatorCount: (s) => (s.presence || []).length,
+    canUndo: (s) => (s._undoStack || []).length > 0,
+    canRedo: (s) => (s._redoStack || []).length > 0,
+    performMode: (s) => !!s.settings.performMode
   },
   actions: {
-    // --- connection plumbing ---
+    _pushUndo() {
+      const snap = {
+        layers: JSON.parse(JSON.stringify(this.layers)),
+        folders: JSON.parse(JSON.stringify(this.folders)),
+        soundpad: JSON.parse(JSON.stringify(this.soundpad))
+      }
+      this._undoStack = [...(this._undoStack || []).slice(-49), snap]
+      this._redoStack = []
+    },
+    async undo() {
+      if (!this._undoStack?.length) return
+      const prev = this._undoStack[this._undoStack.length - 1]
+      this._undoStack = this._undoStack.slice(0, -1)
+      this._redoStack = [...(this._redoStack || []), {
+        layers: JSON.parse(JSON.stringify(this.layers)),
+        folders: JSON.parse(JSON.stringify(this.folders)),
+        soundpad: JSON.parse(JSON.stringify(this.soundpad))
+      }]
+      await socket.sendOp({ kind: 'replaceScene', scene: {
+        ...JSON.parse(JSON.stringify({
+          layers: prev.layers,
+          folders: prev.folders,
+          soundpad: prev.soundpad,
+          settings: this.settings,
+          presets: this.presets,
+          trash: this.trash,
+          version: 1
+        }))
+      }})
+    },
+    async redo() {
+      if (!this._redoStack?.length) return
+      const next = this._redoStack[this._redoStack.length - 1]
+      this._redoStack = this._redoStack.slice(0, -1)
+      this._undoStack = [...(this._undoStack || []), {
+        layers: JSON.parse(JSON.stringify(this.layers)),
+        folders: JSON.parse(JSON.stringify(this.folders)),
+        soundpad: JSON.parse(JSON.stringify(this.soundpad))
+      }]
+      await socket.sendOp({ kind: 'replaceScene', scene: {
+        layers: next.layers,
+        folders: next.folders,
+        soundpad: next.soundpad,
+        settings: this.settings,
+        presets: this.presets,
+        trash: this.trash,
+        version: 1
+      }})
+    },
     connect(token) {
-      // Register WS listeners once. The socket may be reused across
-      // disconnect/reconnect cycles (e.g. failed auto-login → PIN login).
       if (!this._wsBound) {
         socket.onMessage((msg) => this._onMessage(msg))
         socket.onStatus((v) => (this.connected = v))
@@ -54,44 +134,132 @@ export const useSceneStore = defineStore('scene', {
       socket.disconnect()
       this.connected = false
     },
+    _applyOpLocally(op) {
+      if (!op) return
+      if (op.kind === 'updateLayer') {
+        const l = this.layers.find((x) => x.id === op.id)
+        if (!l) return
+        Object.assign(l, op.patch)
+        if (op.patch?.transform) l.transform = { ...l.transform, ...op.patch.transform }
+      } else if (op.kind === 'updateSettings') {
+        this.settings = { ...this.settings, ...(op.patch || {}) }
+      } else if (op.kind === 'updateSoundpad') {
+        const id = Math.floor(op.slotId)
+        if (!Array.isArray(this.soundpad)) this.soundpad = []
+        if (id >= 0 && id < this.soundpad.length) {
+          this.soundpad[id] = { name: '', src: '', volume: 1, color: '#3b82f6', ...op.slot }
+        }
+      }
+    },
     _onMessage(msg) {
       if (msg.type === 'scene') {
-        // Full resync from server (authoritative).
         this.layers = msg.scene.layers || []
         this.settings = msg.scene.settings || {}
         this.folders = msg.scene.folders || []
         this.presets = msg.scene.presets || []
         this.trash = msg.scene.trash || []
-        // Rebuild the TTL expiry map from the authoritative layer list. Any
-        // id no longer present is dropped (server already deleted it).
+        this.soundpad = msg.scene.soundpad || []
+        if (typeof msg.rev === 'number') this.rev = msg.rev
         this._rebuildTtl()
-      } else if (msg.type === 'obs-sources') {
-        // Native OBS source boundaries (editor-only overlay).
+        // Background: CDN emote layers → local /uploads/emotes (offline)
+        import('../features/emotes.js')
+          .then((m) => m.hydrateClientEmotes())
+          .catch(() => { /* ignore */ })
+      } else if (msg.type === 'patch') {
+        if (typeof msg.rev === 'number') {
+          if (this.rev && msg.rev > this.rev + 1) {
+            socket.sendRaw({ type: 'resync' })
+          }
+          this.rev = msg.rev
+        }
+        this._applyOpLocally(msg.op)
+      } else if (msg.type === 'presence') {
+        this.presence = msg.moderators || []
+      } else if (msg.type === 'donation-queue') {
+        this.donationQueue = {
+          paused: !!msg.paused,
+          current: msg.current || null,
+          pending: msg.pending || [],
+          log: msg.log || this.donationQueue.log || []
+        }
+      } else if (msg.type === 'donation-play' || msg.type === 'donation-stop') {
+        // Queue snapshot usually follows; keep soft update
+      } else if (msg.type === 'obs-sources' || msg.type === 'obs-layout') {
         this.obsSources = msg.sources || []
         this.obsConnected = !!msg.obsConnected
+        if (msg.rev != null) this.obsLayoutRev = msg.rev
+        if (msg.target) this.obsLayoutTarget = msg.target
+        if (typeof msg.studioMode === 'boolean') this.obsStudioMode = msg.studioMode
+        if (msg.programScene != null) this.obsProgramScene = msg.programScene
+        if (msg.previewScene != null) this.obsPreviewScene = msg.previewScene
+      } else if (msg.type === 'obs-layout-patch') {
+        this.obsConnected = msg.obsConnected !== undefined ? !!msg.obsConnected : this.obsConnected
+        if (msg.rev != null) this.obsLayoutRev = msg.rev
+        if (msg.target) this.obsLayoutTarget = msg.target
+        if (typeof msg.studioMode === 'boolean') this.obsStudioMode = msg.studioMode
+        if (msg.programScene != null) this.obsProgramScene = msg.programScene
+        if (msg.previewScene != null) this.obsPreviewScene = msg.previewScene
+        const removes = new Set(msg.removes || [])
+        let next = (this.obsSources || []).filter((s) => !removes.has(s.id))
+        const byId = new Map(next.map((s) => [s.id, s]))
+        for (const u of msg.upserts || []) {
+          byId.set(u.id, { ...(byId.get(u.id) || {}), ...u })
+        }
+        this.obsSources = [...byId.values()].sort((a, b) => (a.index || 0) - (b.index || 0))
+      } else if (msg.type === 'obs-preview-status') {
+        this.obsPreviewStatus = {
+          mode: msg.mode || null,
+          whepUrl: msg.whepUrl || null,
+          mjpegPath: msg.mjpegPath || '/api/obs/preview.mjpeg',
+          fps: msg.fps || 4,
+          width: msg.width || 960,
+          connected: !!msg.connected,
+          lastError: msg.lastError || null
+        }
       } else if (msg.type === 'media-ctrl') {
-        // Transient transport command fanned out by the server. Replace this
-        // id's slot with the new command object (carries a nonce so a repeat
-        // — e.g. two seeks to the same time — still fires in the watcher).
         this.mediaCtrl = { ...this.mediaCtrl, [msg.id]: { ...(msg.patch || {}), nonce: msg.nonce } }
+      } else if (msg.type === 'yt-timeline') {
+        if (msg.id && msg.timeline) {
+          this.ytTimeline = { ...this.ytTimeline, [msg.id]: { ...msg.timeline } }
+        }
+      } else if (msg.type === 'yt-timelines') {
+        this.ytTimeline = { ...(msg.timelines || {}) }
+      } else if (msg.type === 'yt-chase') {
+        if (msg.id && msg.timeline) {
+          this.ytTimeline = { ...this.ytTimeline, [msg.id]: { ...msg.timeline, _chase: true } }
+        }
+      } else if (msg.type === 'sound-play') {
+        const cur = this.pendingSound
+        if (cur && cur.src === msg.src && !!cur.stopAll === !!msg.stopAll &&
+            typeof cur.nonce === 'string' && cur.nonce.startsWith('local-')) {
+          return
+        }
+        this.pendingSound = {
+          src: msg.src, volume: msg.volume, stopAll: msg.stopAll, slotId: msg.slotId,
+          nonce: msg.nonce, compressor: msg.compressor ?? !!this.settings.soundpadCompressor
+        }
       } else if (msg.type === 'error') {
         console.warn('[scene] server error:', msg.error)
       }
     },
 
-    // --- op senders (moderator only) ---
     async addLayer(partial) {
-      // Assign order = max+1 so it lands on top.
+      this._pushUndo()
       const order = this.layers.reduce((m, l) => Math.max(m, l.order || 0), -1) + 1
       const layer = createLayer({ ...partial, order })
       await socket.sendOp({ kind: 'addLayer', layer })
       this.selectedId = layer.id
       return layer
     },
-    async updateLayer(id, patch) {
+    async updateLayer(id, patch, { optimistic = false } = {}) {
+      if (!optimistic) this._pushUndo()
+      if (optimistic) {
+        this._applyOpLocally({ kind: 'updateLayer', id, patch })
+      }
       await socket.sendOp({ kind: 'updateLayer', id, patch })
     },
     async deleteLayer(id) {
+      this._pushUndo()
       await socket.sendOp({ kind: 'deleteLayer', id })
       if (this.selectedId === id) this.selectedId = null
     },
@@ -105,8 +273,12 @@ export const useSceneStore = defineStore('scene', {
       await socket.sendOp({ kind: 'reorder', order: orderIds })
     },
     async clearWorkspace() {
+      this._pushUndo()
       await socket.sendOp({ kind: 'clearWorkspace' })
       this.selectedId = null
+    },
+    async togglePerformMode() {
+      await this.updateSettings({ performMode: !this.settings.performMode })
     },
     async updateSettings(patch) {
       await socket.sendOp({ kind: 'updateSettings', patch })
@@ -266,6 +438,25 @@ export const useSceneStore = defineStore('scene', {
       })
     },
 
+    selectObsSource(id) {
+      this.obsSelectedId = id == null ? null : id
+    },
+
+    async setObsLayoutTarget(target) {
+      const token = localStorage.getItem('omo_token') || ''
+      const r = await fetch('/api/obs/layout-target', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + token
+        },
+        body: JSON.stringify({ target: target === 'preview' ? 'preview' : 'program' })
+      })
+      const data = await r.json().catch(() => ({}))
+      if (data?.target) this.obsLayoutTarget = data.target
+      return data
+    },
+
     // --- Manual save (force persist) ---
     async forceSave() {
       await socket.sendOp({ kind: 'forceSave' })
@@ -281,10 +472,106 @@ export const useSceneStore = defineStore('scene', {
       this.mediaCtrl = { ...this.mediaCtrl, [id]: { ...patch, nonce: 'local-' + Date.now() } }
       await socket.sendMediaCtrl(id, patch)
     },
+    // Authoritative YouTube transport → server timeline → broadcast yt-timeline.
+    async sendYtTransport(id, patch) {
+      const prev = this.ytTimeline[id] || {}
+      const hasSeek = typeof patch.seek === 'number' && isFinite(patch.seek)
+      let mediaTime = hasSeek ? Math.max(0, patch.seek) : (prev.mediaTime || 0)
+      let playing = !!prev.playing
+      if (patch.stop) {
+        playing = false
+        mediaTime = 0
+      } else if (patch.playing === true) {
+        playing = true
+      } else if (patch.playing === false) {
+        playing = false
+      }
+      const forceSeek = !!patch.stop || hasSeek || (playing !== !!prev.playing)
+      const nonce = 'local-' + Date.now()
+      const optimistic = {
+        id,
+        playing,
+        mediaTime,
+        wallClock: Date.now(),
+        rate: typeof patch.rate === 'number' && patch.rate > 0 ? patch.rate : (prev.rate || 1),
+        stop: !!patch.stop,
+        forceSeek,
+        nonce
+      }
+      this.ytTimeline = { ...this.ytTimeline, [id]: optimistic }
+      // Optimistic media-ctrl so editor iframe moves immediately (same as legacy).
+      const ctrl = {}
+      if (patch.stop) ctrl.stop = true
+      else {
+        if (forceSeek) ctrl.seek = mediaTime
+        if (patch.playing === true || patch.playing === false) ctrl.playing = playing
+        else if (forceSeek && playing) ctrl.playing = true
+      }
+      this.mediaCtrl = { ...this.mediaCtrl, [id]: { ...ctrl, nonce } }
+      await socket.sendYtTransport(id, patch)
+    },
+    // moderatorMaster heartbeat (fire-and-forget).
+    sendYtTime(id, patch) {
+      socket.sendYtTime(id, patch)
+    },
     // Editor-only readout from StageRenderer: live current/duration/playing
     // for the transport bars. Never sent to the server.
     setMediaState(id, partial) {
       this.mediaState = { ...this.mediaState, [id]: { ...(this.mediaState[id] || {}), ...partial } }
+    },
+    setYtSyncStatus(id, partial) {
+      this.ytSyncStatus = { ...this.ytSyncStatus, [id]: { ...(this.ytSyncStatus[id] || {}), ...partial } }
+    },
+
+    // --- SoundPad slots (persisted) -----------------------------------------
+    // Replace one of the 10 slot objects. slotId is 0..9. Server-authoritative
+    // via the updateSoundpad op, so a second moderator (or a reload) converges.
+    async setSoundpadSlot(slotId, slot) {
+      let next = { ...slot }
+      const src = next.src || ''
+      if (/^https?:\/\//i.test(src)) {
+        try {
+          const token = localStorage.getItem('omo_token') || ''
+          const r = await fetch('/api/sounds/cache', {
+            method: 'POST',
+            headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: src, name: next.name })
+          }).then((x) => x.json())
+          if (r.ok && r.src) next.src = r.src
+        } catch (_) { /* keep CDN */ }
+      }
+      await socket.sendOp({ kind: 'updateSoundpad', slotId, slot: next })
+    },
+
+    // --- SoundPad playback (transient) -------------------------------------
+    // Play a reaction sound on BOTH moderator + OBS.
+    // CRITICAL: update pendingSound synchronously here (in user gesture context)
+    // so the browser allows audio playback. The server broadcast will echo back
+    // with a different nonce, but the watcher ignores it (lastNonce already set).
+    async sendSoundPlay({ src, volume, slotId } = {}) {
+      if (!src) return
+      const master = typeof this.settings.soundpadMasterVolume === 'number' ? this.settings.soundpadMasterVolume : 0.5
+      const vol = (typeof volume === 'number' ? volume : 1) * master
+      const nonce = 'local-' + Date.now() + '-' + Math.random()
+      const compressor = !!this.settings.soundpadCompressor
+      this.pendingSound = { src, volume: vol, stopAll: false, slotId, nonce, compressor }
+      await socket.sendSoundPlay({ src, volume: typeof volume === 'number' ? volume : 1, stopAll: false, slotId, compressor })
+    },
+    previewSound({ src, volume, slotId } = {}) {
+      if (!src) return
+      const master = typeof this.settings.soundpadMasterVolume === 'number' ? this.settings.soundpadMasterVolume : 0.5
+      const vol = (typeof volume === 'number' ? volume : 1) * master
+      this.pendingSound = {
+        src, volume: vol, stopAll: false, slotId,
+        nonce: 'preview-' + Date.now() + '-' + Math.random(),
+        compressor: !!this.settings.soundpadCompressor
+      }
+    },
+    // Stop every SoundPad <audio> element in editor and OBS at once.
+    async stopAllSounds() {
+      this.pendingSound = { stopAll: true, nonce: 'stop-' + Date.now() + '-' + Math.random() }
+      this.playingSlotId = null
+      await socket.sendSoundPlay({ stopAll: true })
     }
   }
 })

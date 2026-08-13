@@ -1,0 +1,65 @@
+cmake_minimum_required(VERSION 3.28)
+project(omo-connector VERSION 0.4.0 LANGUAGES CXX)
+
+# Standalone build: headers from cloned obs-studio + import lib from installed obs.dll
+# No Qt dock (needs MSVC Qt). Unified OMO Overlay (native|browser) + legacy native id.
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+set(OMO_OBS_HEADERS "${CMAKE_SOURCE_DIR}/../deps/obs-studio" CACHE PATH "obs-studio source tree (headers)")
+set(OMO_OBS_IMPORT "${CMAKE_SOURCE_DIR}/../deps/obs-import-lib" CACHE PATH "Folder with obs.lib + obsconfig.h")
+
+if(NOT EXISTS "${OMO_OBS_HEADERS}/libobs/obs.h")
+  message(FATAL_ERROR "OBS headers not found at ${OMO_OBS_HEADERS}/libobs/obs.h — run git clone first")
+endif()
+if(NOT EXISTS "${OMO_OBS_IMPORT}/obs.lib")
+  message(FATAL_ERROR "obs.lib not found at ${OMO_OBS_IMPORT}/obs.lib — run deps/gen-obs-lib.ps1")
+endif()
+
+add_library(omo-connector MODULE
+  src/plugin-main.cpp
+  src/omo-source.cpp
+  src/omo-native-source.cpp
+  src/omo-tcp-frames.cpp
+  src/http-local.cpp
+)
+
+target_compile_definitions(omo-connector PRIVATE
+  OMO_NO_DOCK=1
+  UNICODE
+  _UNICODE
+)
+
+target_include_directories(omo-connector PRIVATE
+  "${OMO_OBS_IMPORT}"
+  "${OMO_OBS_HEADERS}/libobs"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src"
+)
+
+# w32-pthreads headers live under obs-studio/deps
+if(EXISTS "${OMO_OBS_HEADERS}/deps/w32-pthreads")
+  target_include_directories(omo-connector PRIVATE "${OMO_OBS_HEADERS}/deps/w32-pthreads")
+endif()
+
+target_link_libraries(omo-connector PRIVATE
+  "${OMO_OBS_IMPORT}/obs.lib"
+  "${OMO_OBS_IMPORT}/w32-pthreads.lib"
+  winhttp
+  ws2_32
+)
+
+set_target_properties(omo-connector PROPERTIES
+  PREFIX ""
+  OUTPUT_NAME "omo-connector"
+)
+
+# Stage plugin package
+set(OMO_STAGE "${CMAKE_BINARY_DIR}/dist/omo-connector")
+add_custom_command(TARGET omo-connector POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E make_directory "${OMO_STAGE}/bin/64bit"
+  COMMAND ${CMAKE_COMMAND} -E make_directory "${OMO_STAGE}/data/locale"
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:omo-connector>" "${OMO_STAGE}/bin/64bit/"
+  COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/data/locale" "${OMO_STAGE}/data/locale"
+  COMMENT "Staging omo-connector (sources only, no dock)"
+)

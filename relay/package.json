@@ -1,0 +1,15 @@
+{
+  "name": "omo-connector-relay",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Outbound WSS relay for OBS Moderator Overlay connector (no scene storage)",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test:e2e": "node e2e-pair.mjs"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}

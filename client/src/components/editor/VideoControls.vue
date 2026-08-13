@@ -1,28 +1,32 @@
 <!--
   VideoControls.vue (M3)
-  Playback controls for video layers: transport bar (play/pause + scrub +
-  time) wired through media-ctrl so the OBS stream mirrors transport, plus
-  loop/autoplay/muted/speed/volume/fragment. Patches the layer's video
-  sub-object for the persisted props; sends transient transport commands
-  (play/pause/seek) that are NOT persisted.
+  Playback controls for video layers. Fluent transport chrome (Phase 2).
 -->
 <template>
-  <fieldset v-if="layer?.type === 'video'">
+  <fieldset v-if="layer?.type === 'video'" class="fluent-fieldset">
     <legend>Video playback</legend>
 
-    <!-- Transport: play/pause + scrub + time. Synced to OBS via media-ctrl. -->
-    <div class="transport">
-      <button class="t-btn" :class="{ active: playing }" :title="playing ? 'Pause' : 'Play'" @click="togglePlay">
-        {{ playing ? '❚❚' : '▶' }}
-      </button>
+    <div class="transport fluent-transport">
+      <Button
+        size="icon"
+        class="h-8 w-8"
+        :variant="playing ? 'default' : 'secondary'"
+        :title="playing ? 'Pause' : 'Play'"
+        @click="togglePlay"
+      >
+        <Pause v-if="playing" class="h-4 w-4" />
+        <Play v-else class="h-4 w-4" />
+      </Button>
       <span class="t-time">{{ fmt(current) }}</span>
-      <div class="t-seek" ref="seekBar" @click="onSeek">
+      <div class="t-seek fluent-seek" ref="seekBar" @click="onSeek">
         <div class="t-progress" :style="{ width: pct + '%' }"></div>
       </div>
       <span class="t-time muted">{{ fmt(duration) }}</span>
     </div>
     <div class="t-row">
-      <button class="t-btn small" title="Rewind to start" @click="rewind">⏮ Rewind</button>
+      <Button size="sm" variant="secondary" title="Rewind to start" @click="rewind">
+        <SkipBack class="h-3.5 w-3.5" /> Rewind
+      </Button>
     </div>
 
     <div class="ctrl-grid">
@@ -52,11 +56,11 @@
 
     <div class="fragment" v-if="v.fragment">
       <span class="muted small">Fragment: {{ fmtTime(v.fragment[0]) }} – {{ fmtTime(v.fragment[1]) }}</span>
-      <button @click="setV('fragment', null)">Clear fragment</button>
+      <Button size="sm" variant="outline" @click="setV('fragment', null)">Clear fragment</Button>
     </div>
     <div v-else class="fragment">
       <span class="muted small">No fragment set. Set in/out in the video element.</span>
-      <button @click="setV('fragment', [0, 10])">Set 0–10s demo</button>
+      <Button size="sm" variant="outline" @click="setV('fragment', [0, 10])">Set 0–10s demo</Button>
     </div>
 
     <p class="hint muted small">Transport (play/pause/seek) mirrors live to the OBS stream. Volume here affects only your editor preview — the stream's audio level is set in OBS.</p>
@@ -65,7 +69,9 @@
 
 <script setup>
 import { computed, ref } from 'vue'
+import { Play, Pause, SkipBack } from '@lucide/vue'
 import { useSceneStore } from '../../stores/scene.js'
+import { Button } from '@/components/ui/button'
 
 const props = defineProps({ layer: Object })
 const scene = useSceneStore()
@@ -73,7 +79,6 @@ const scene = useSceneStore()
 const v = computed(() => props.layer?.video || {})
 const speeds = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 3]
 
-// Live readout pushed up from StageRenderer (editor only).
 const state = computed(() => scene.mediaState[props.layer.id] || {})
 const current = computed(() => state.value.current || 0)
 const duration = computed(() => state.value.duration || 0)
@@ -86,8 +91,6 @@ function setV(key, value) {
   scene.updateLayer(props.layer.id, { video: { ...v.value, [key]: value } })
 }
 
-// Transport commands go through the shared media-ctrl channel so OBS mirrors
-// them. They are transient — not persisted into scene.json.
 function togglePlay() {
   scene.sendMediaCtrl(props.layer.id, { playing: !playing.value })
 }
@@ -122,37 +125,9 @@ function fmtTime(s) {
 .small { font-size: 10px; }
 .hint { margin: 6px 0 0; line-height: 1.4; }
 .fragment { margin-top: 8px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-
 .transport { display: flex; align-items: center; gap: 8px; }
-.t-btn {
-  flex: none;
-  padding: 6px 10px;
-  font-size: 13px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--bg);
-  color: var(--text);
-  cursor: pointer;
-}
-.t-btn:hover { background: var(--bg-2); }
-.t-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
-.t-btn.small { padding: 4px 8px; font-size: 12px; }
 .t-row { display: flex; gap: 6px; margin-top: 6px; }
 .t-time { font-size: 11px; font-variant-numeric: tabular-nums; min-width: 34px; }
-.t-seek {
-  flex: 1;
-  height: 6px;
-  background: var(--bg-3);
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  cursor: pointer;
-  position: relative;
-  overflow: hidden;
-}
-.t-progress {
-  position: absolute;
-  left: 0; top: 0; bottom: 0;
-  background: var(--accent);
-  border-radius: 3px;
-}
+.t-seek { flex: 1; }
+label.row { flex-direction: row; align-items: center; gap: 8px; display: flex; }
 </style>

@@ -17,7 +17,9 @@
 // Emotes"). That token is stored server-side only and never sent to the
 // browser (see server/auth.js get7tvToken/set7tvToken).
 
-import { get7tvToken, set7tvToken, clear7tvToken } from './auth.js'
+import { get7tvToken, set7tvToken, clear7tvToken, get7tvUsername } from './auth.js'
+import { mountGifsruRoutes } from './gifsru.js'
+import { attachCachedUrls } from './emote-cache.js'
 
 const CACHE_TTL_MS = 5 * 60 * 1000
 const cache = new Map() // key -> { at, value }
@@ -143,6 +145,14 @@ const SEVEN_SEARCH_Q = `
     }
   }`
 
+const SEVEN_CATALOG_Q = `
+  query CatalogEmotes($query: String!, $page: Int, $limit: Int, $filter: EmoteSearchFilter) {
+    emotes(query: $query, page: $page, limit: $limit, filter: $filter) {
+      count
+      items { id name animated host { url files { name format width } } }
+    }
+  }`
+
 const SEVEN_GLOBAL_Q = `
   query GlobalSet {
     namedEmoteSet(name: GLOBAL) {
@@ -181,6 +191,39 @@ async function sevenSearch(q, limit) {
   const data = await sevenGql(SEVEN_SEARCH_Q, { query: q, page: 1, limit })
   const items = data?.emotes?.items
   return (Array.isArray(items) ? items : []).map(sevenNorm).filter((e) => e.url)
+}
+
+/** Browse catalogs matching 7tv.app/emotes (Popular / Trending / New). */
+const SEVEN_CATEGORIES = new Set([
+  'TOP',
+  'TRENDING_DAY',
+  'TRENDING_WEEK',
+  'TRENDING_MONTH',
+  'FEATURED',
+  'NEW',
+  'GLOBAL'
+])
+
+async function sevenCatalog(category, limit, page = 1) {
+  const cat = String(category || 'TOP').toUpperCase()
+  if (!SEVEN_CATEGORIES.has(cat)) throw new Error('Unsupported 7TV catalog: ' + cat)
+  // GLOBAL named set is more reliable than filter.category=GLOBAL (API stub).
+  if (cat === 'GLOBAL') {
+    const all = await sevenGlobal()
+    return { results: all, count: all.length, page: 1, limit: all.length }
+  }
+  const lim = Math.min(Math.max(limit || 48, 1), 120)
+  const pg = Math.max(1, Math.floor(Number(page) || 1))
+  const data = await sevenGql(SEVEN_CATALOG_Q, {
+    query: '',
+    page: pg,
+    limit: lim,
+    filter: { category: cat }
+  })
+  const items = data?.emotes?.items
+  const results = (Array.isArray(items) ? items : []).map(sevenNorm).filter((e) => e.url)
+  const count = typeof data?.emotes?.count === 'number' ? data.emotes.count : null
+  return { results, count, page: pg, limit: lim }
 }
 
 async function sevenGlobal() {
@@ -332,12 +375,12 @@ export function mountEmoteRoutes(app, requireModerator) {
   app.get('/api/emotes/search', (req, res) => {
     if (!requireModerator(req, res)) return
     const { provider, q } = req.query
-    const limit = Math.min(parseInt(req.query.limit, 10) || 36, 80)
+    const limit = Math.min(parseInt(req.query.limit, 10) || 36, 120)
     if (!q || !String(q).trim()) return res.json({ ok: true, results: [] })
     const fn = SEARCH[provider]
     if (!fn) return res.status(400).json({ ok: false, error: 'Unsupported provider for search' })
     cached(`search|${provider}|${q}|${limit}`, () => fn(String(q).trim(), limit))
-      .then((results) => res.json({ ok: true, results }))
+      .then((results) => res.json({ ok: true, results: attachCachedUrls(results) }))
       .catch((err) => res.status(502).json({ ok: false, error: 'Upstream error: ' + err.message, provider }))
   })
 
@@ -348,8 +391,39 @@ export function mountEmoteRoutes(app, requireModerator) {
     const fn = GLOBAL[provider]
     if (!fn) return res.status(400).json({ ok: false, error: 'Unsupported provider for browse' })
     cached(`global|${provider}`, () => fn())
-      .then((results) => res.json({ ok: true, results }))
+      .then((results) => res.json({ ok: true, results: attachCachedUrls(results) }))
       .catch((err) => res.status(502).json({ ok: false, error: 'Upstream error: ' + err.message, provider }))
+  })
+
+  // GET /api/emotes/catalog?provider=7tv&category=TOP|TRENDING_DAY|…&limit=&page=
+  // Mirrors https://7tv.app/emotes/ sections (Popular / Trending / New).
+  app.get('/api/emotes/catalog', (req, res) => {
+    if (!requireModerator(req, res)) return
+    if (req.query.provider !== '7tv') {
+      return res.status(400).json({ ok: false, error: 'Catalog browse is only supported for 7TV' })
+    }
+    const category = String(req.query.category || 'TOP').toUpperCase()
+    const limit = Math.min(parseInt(req.query.limit, 10) || 48, 120)
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1)
+    if (!SEVEN_CATEGORIES.has(category)) {
+      return res.status(400).json({
+        ok: false,
+        error: 'Unsupported category',
+        allowed: [...SEVEN_CATEGORIES]
+      })
+    }
+    cached(`catalog|7tv|${category}|${limit}|p${page}`, () => sevenCatalog(category, limit, page))
+      .then((payload) => {
+        const results = Array.isArray(payload) ? payload : (payload.results || [])
+        const count = Array.isArray(payload) ? results.length : payload.count
+        const pg = Array.isArray(payload) ? 1 : (payload.page || page)
+        const lim = Array.isArray(payload) ? results.length : (payload.limit || limit)
+        const hasMore = count != null
+          ? pg * lim < count
+          : results.length >= lim
+        res.json({ ok: true, category, page: pg, limit: lim, count, hasMore, results: attachCachedUrls(results) })
+      })
+      .catch((err) => res.status(502).json({ ok: false, error: 'Upstream error: ' + err.message, provider: '7tv' }))
   })
 
   // --- 7TV account routes (moderator only) -----------------------------------
@@ -364,7 +438,12 @@ export function mountEmoteRoutes(app, requireModerator) {
     const token = get7tvToken()
     if (!token) return res.json({ ok: true, connected: false, results: [] })
     sevenMyEmotes(token)
-      .then((result) => res.json({ ok: true, connected: true, ...result }))
+      .then((result) => res.json({
+        ok: true,
+        connected: true,
+        ...result,
+        results: attachCachedUrls(result.results || [])
+      }))
       .catch((err) => res.status(502).json({ ok: false, connected: true, error: err.message, provider: '7tv' }))
   })
 
@@ -380,7 +459,7 @@ export function mountEmoteRoutes(app, requireModerator) {
       .then((data) => {
         const actor = data?.actor
         if (!actor?.id) return res.status(401).json({ ok: false, error: 'Token rejected by 7TV — check and try again' })
-        set7tvToken(trimmed)
+        set7tvToken(trimmed, actor.username)
         invalidateCache('global|7tv')
         res.json({ ok: true, username: actor.username })
       })
@@ -401,14 +480,24 @@ export function mountEmoteRoutes(app, requireModerator) {
       const data = await sevenGql(SEVEN_ACTOR_Q, {}, token)
       const actor = data?.actor
       if (!actor?.id) {
+        // Explicit rejection of token identity — clear.
         clear7tvToken()
         return res.json({ connected: false })
       }
       res.json({ connected: true, username: actor.username })
-    } catch (_) {
-      // Token is probably expired or revoked.
-      clear7tvToken()
-      res.json({ connected: false })
+    } catch (err) {
+      // Network / geo-block / 502: keep token on disk, report unreachable.
+      const status = err?.status
+      if (status === 401) {
+        clear7tvToken()
+        return res.json({ connected: false })
+      }
+      res.json({
+        connected: true,
+        unreachable: true,
+        username: get7tvUsername?.() || undefined,
+        error: err.message || '7TV unreachable'
+      })
     }
   })
 
@@ -421,4 +510,6 @@ export function mountEmoteRoutes(app, requireModerator) {
     invalidateCache('my|7tv')
     res.json({ ok: true, connected: false })
   })
+
+  mountGifsruRoutes(app, requireModerator)
 }

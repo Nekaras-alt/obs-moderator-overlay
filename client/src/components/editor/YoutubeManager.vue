@@ -14,34 +14,50 @@
 -->
 <template>
   <div v-if="youtubeLayers.length" class="yt-manager">
-    <!-- Master toolbar: count + collapse/expand all. -->
-    <div class="ym-bar">
-      <span class="ym-title">▶ YouTube</span>
-      <span class="ym-count">{{ youtubeLayers.length }}</span>
-      <span class="ym-spacer"></span>
-      <button class="ym-mini" :title="allCollapsed ? 'Expand all' : 'Collapse all'" @click="toggleAll">
-        {{ allCollapsed ? '⊞' : '⊟' }}
-      </button>
-    </div>
+    <AppPanel
+      :open="true"
+      title="YouTube"
+      width="220px"
+      class="ym-master"
+      :padded="false"
+      :closable="false"
+    >
+      <template #icon><TvMinimalPlay class="h-3.5 w-3.5" /></template>
+      <template #title>
+        <span class="ym-title-row">YouTube <span class="ym-count">{{ youtubeLayers.length }}</span></span>
+      </template>
+      <template #actions>
+        <Button size="icon" variant="ghost" class="h-7 w-7" :title="allCollapsed ? 'Expand all' : 'Collapse all'" @click="toggleAll">
+          <Maximize2 v-if="allCollapsed" class="h-3.5 w-3.5" />
+          <Minimize2 v-else class="h-3.5 w-3.5" />
+        </Button>
+      </template>
+    </AppPanel>
 
     <div
       v-for="(l, i) in youtubeLayers"
       :key="l.id"
-      class="yt-win"
-      :class="{ selected: l.id === scene.selectedId, collapsed: isCollapsed(l.id) }"
+      class="yt-win fluent-float"
+      :class="{ selected: l.id === scene.selectedId, 'is-minimized': isCollapsed(l.id) }"
       :style="winStyle(l.id, i)"
     >
       <!-- Header: drag handle + title + live indicator + collapse/close -->
       <div class="yt-head" @mousedown="onDragStart($event, l.id)" @dblclick="toggleCollapse(l.id)">
-        <span class="yt-drag" title="Drag">⋮⋮</span>
+        <GripVertical class="yt-drag h-3.5 w-3.5" title="Drag" />
         <button class="yt-play-dot" :class="{ on: playing(l.id) }" :title="playing(l.id) ? 'Playing' : 'Paused'"
-                @mousedown.stop @click="quickToggle(l.id)">{{ playing(l.id) ? '❚❚' : '▶' }}</button>
+                @mousedown.stop @click="quickToggle(l.id)">
+          <Pause v-if="playing(l.id)" class="h-3 w-3" />
+          <Play v-else class="h-3 w-3" />
+        </button>
         <span class="yt-name" :title="l.name">{{ l.name }}</span>
         <span class="yt-time muted">{{ fmt(current(l.id)) }} / {{ fmt(duration(l.id)) }}</span>
         <span class="yt-head-spacer"></span>
-        <button class="yt-icon" title="Focus on stage" @mousedown.stop @click="scene.select(l.id)">◎</button>
+        <button class="yt-icon" title="Focus on stage" @mousedown.stop @click="scene.select(l.id)">
+          <Crosshair class="h-3.5 w-3.5" />
+        </button>
         <button class="yt-icon" :title="isCollapsed(l.id) ? 'Expand' : 'Minimize'" @mousedown.stop @click="toggleCollapse(l.id)">
-          {{ isCollapsed(l.id) ? '▢' : '—' }}
+          <Square v-if="isCollapsed(l.id)" class="h-3 w-3" />
+          <Minus v-else class="h-3.5 w-3.5" />
         </button>
       </div>
 
@@ -50,9 +66,9 @@
         <div class="yt-strip"><div class="yt-strip-fill" :style="{ width: pct(l.id) + '%' }"></div></div>
       </div>
 
-      <!-- Expanded: full transport (delegates to YoutubeControls). -->
+      <!-- Expanded: full transport (new YoutubePlayer). -->
       <div v-else class="yt-body">
-        <YoutubeControls :layer="l" />
+        <YoutubePlayer :layer="l" />
       </div>
     </div>
   </div>
@@ -60,22 +76,61 @@
 
 <script setup>
 import { reactive, computed, watch, onMounted, onBeforeUnmount, ref } from 'vue'
+import { TvMinimalPlay, Maximize2, Minimize2, GripVertical, Play, Pause, Crosshair, Square, Minus } from '@lucide/vue'
 import { useSceneStore } from '../../stores/scene.js'
-import YoutubeControls from './YoutubeControls.vue'
+import YoutubePlayer from './YoutubePlayer.vue'
+import { expectedTime, normalizeSyncMode } from '../../features/ytTimeline.js'
+import { Button } from '@/components/ui/button'
+import AppPanel from '@/components/shell/AppPanel.vue'
 
 const scene = useSceneStore()
+
+// Source of truth: every youtube layer on the stage.
+const youtubeLayers = computed(() => scene.layers.filter((l) => l.type === 'youtube'))
 
 // Reactive viewport height so window positions recompute on browser resize
 // (fromBottom depends on it). Otherwise a resized window would leave dropped
 // windows floating at stale coordinates.
 const viewportH = ref(typeof window !== 'undefined' ? window.innerHeight : 1080)
 function onResize() { viewportH.value = window.innerHeight }
-onMounted(() => window.addEventListener('resize', onResize))
-onBeforeUnmount(() => window.removeEventListener('resize', onResize))
+// --- live transport readout (timeline-aware) -------------------------------
+const uiTick = ref(0)
+let uiTickTimer = null
+onMounted(() => {
+  window.addEventListener('resize', onResize)
+  uiTickTimer = setInterval(() => { uiTick.value++ }, 250)
+})
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', onResize)
+  if (uiTickTimer) clearInterval(uiTickTimer)
+})
 
-// Source of truth: every youtube layer on the stage. Derived from the store, so
-// adding/deleting a video automatically grows/shrinks the window set.
-const youtubeLayers = computed(() => scene.layers.filter((l) => l.type === 'youtube'))
+function stateOf(id) { return scene.mediaState[id] || {} }
+function timelineOf(id) { return scene.ytTimeline[id] || null }
+function isLegacy(id) {
+  const l = youtubeLayers.value.find((x) => x.id === id)
+  return normalizeSyncMode(l?.youtube?.syncMode) === 'legacy'
+}
+function current(id) {
+  void uiTick.value
+  const tl = timelineOf(id)
+  if (!isLegacy(id) && tl) return expectedTime(tl)
+  return stateOf(id).current || 0
+}
+function duration(id) { return stateOf(id).duration || 0 }
+function playing(id) {
+  const tl = timelineOf(id)
+  if (!isLegacy(id) && tl) return !!tl.playing && !tl.stop
+  return !!stateOf(id).playing
+}
+function pct(id) { const d = duration(id); return d ? Math.max(0, Math.min(100, (current(id) / d) * 100)) : 0 }
+
+function quickToggle(id) {
+  const l = youtubeLayers.value.find((x) => x.id === id)
+  const patch = { playing: !playing(id) }
+  if (normalizeSyncMode(l?.youtube?.syncMode) === 'legacy') scene.sendMediaCtrl(id, patch)
+  else scene.sendYtTransport(id, patch)
+}
 
 // Per-window UI state: collapse flag + drag offset. Kept local (not persisted)
 // since it's pure moderator chrome — it has nothing to do with the scene or OBS.
@@ -148,17 +203,6 @@ function onDragEnd() {
   document.body.style.userSelect = ''
 }
 
-// --- live transport readout (from the store's mediaState, editor-only) -----
-function stateOf(id) { return scene.mediaState[id] || {} }
-function current(id) { return stateOf(id).current || 0 }
-function duration(id) { return stateOf(id).duration || 0 }
-function playing(id) { return !!stateOf(id).playing }
-function pct(id) { const d = duration(id); return d ? Math.max(0, Math.min(100, (current(id) / d) * 100)) : 0 }
-
-function quickToggle(id) {
-  scene.sendMediaCtrl(id, { playing: !playing(id) })
-}
-
 // Drop per-window UI state for videos no longer on the stage (deleted) so the
 // reactive maps don't grow without bound across a long session.
 watch(youtubeLayers, (list) => {
@@ -178,73 +222,51 @@ function fmt(sec) {
 <style scoped>
 .yt-manager {
   position: fixed;
-  inset: 0;               /* full-viewport transparent positioning context */
+  inset: 0;
   z-index: 80;
-  pointer-events: none;   /* windows + bar re-enable pointer events */
+  pointer-events: none;
 }
 .yt-manager > * { pointer-events: auto; }
 
-/* Master toolbar: anchored bottom-left, above the StatusBar. */
-.ym-bar {
-  position: absolute;
-  left: 16px;
-  /* top computed to sit DOCK_BOTTOM-ish above the bottom; mirror of winStyle's
-     fromBottom. Kept slightly under the first window's cascade baseline. */
-  bottom: 6px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 300px;
-  padding: 5px 10px;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  box-shadow: var(--shadow);
-  font-size: 12px;
-  box-sizing: border-box;
+.ym-master {
+  position: absolute !important;
+  left: 16px !important;
+  right: auto !important;
+  top: auto !important;
+  bottom: 6px !important;
+  max-height: none !important;
+  width: 220px !important;
 }
-.ym-title { font-weight: 600; }
+.ym-title-row { display: inline-flex; align-items: center; gap: 6px; }
 .ym-count {
   min-width: 18px; height: 18px; padding: 0 5px;
   border-radius: 9px;
-  background: var(--accent);
+  background: var(--fluent-accent);
   color: #fff;
   font-size: 10px; font-weight: 700; line-height: 18px; text-align: center;
 }
-.ym-spacer { flex: 1; }
-.ym-mini {
-  padding: 2px 7px; font-size: 12px;
-  border: 1px solid var(--border); background: var(--bg); color: var(--text);
-  border-radius: 5px;
-}
 
-/* Each floating window */
 .yt-win {
-  position: absolute; /* within the .yt-manager container */
+  position: absolute;
   width: 300px;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  box-shadow: var(--shadow);
-  overflow: hidden;
   z-index: 80;
 }
-.yt-win.selected { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), var(--shadow); }
-.yt-win.collapsed { width: 260px; }
+.yt-win.selected { border-color: var(--fluent-accent) !important; box-shadow: 0 0 0 1px var(--fluent-accent), var(--fluent-elevation) !important; }
+.yt-win.is-minimized { width: 260px; }
 
 .yt-head {
   display: flex;
   align-items: center;
   gap: 6px;
   padding: 6px 8px;
-  background: var(--bg-2);
-  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg-2) 80%, transparent);
+  border-bottom: 1px solid var(--fluent-stroke);
   cursor: grab;
   user-select: none;
 }
 .yt-head:active { cursor: grabbing; }
-.yt-win.collapsed .yt-head { border-bottom: none; }
-.yt-drag { color: var(--text-dim); font-size: 11px; letter-spacing: -2px; }
+.yt-win.is-minimized .yt-head { border-bottom: none; }
+.yt-drag { color: var(--text-dim); flex-shrink: 0; }
 .yt-play-dot {
   flex: none;
   width: 22px; height: 22px;
@@ -252,12 +274,12 @@ function fmt(sec) {
   border: none;
   background: var(--bg-3);
   color: var(--text);
-  font-size: 10px;
   cursor: pointer;
   display: flex; align-items: center; justify-content: center;
+  padding: 0;
 }
-.yt-play-dot:hover { background: var(--accent); color: #fff; }
-.yt-play-dot.on { background: var(--accent); color: #fff; }
+.yt-play-dot:hover { background: var(--fluent-accent); color: #fff; }
+.yt-play-dot.on { background: var(--fluent-accent); color: #fff; }
 .yt-name {
   font-size: 12px; font-weight: 600;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
@@ -267,19 +289,20 @@ function fmt(sec) {
 .yt-head-spacer { flex: 1; }
 .yt-icon {
   flex: none;
-  width: 22px; height: 22px;
+  width: 22px;
+  height: 22px;
   padding: 0;
-  font-size: 12px;
-  border: 1px solid var(--border);
-  background: var(--bg);
+  border: 1px solid var(--fluent-stroke);
+  background: transparent;
   color: var(--text);
   border-radius: 5px;
   cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-.yt-icon:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+.yt-icon:hover { background: var(--fluent-accent); color: #fff; border-color: var(--fluent-accent); }
 
-/* Collapsed body: a clickable slim progress strip */
 .yt-collapsed { padding: 6px 8px 8px; cursor: pointer; }
 .yt-strip {
   height: 6px;
@@ -289,12 +312,10 @@ function fmt(sec) {
 }
 .yt-strip-fill {
   height: 100%;
-  background: var(--accent);
+  background: var(--fluent-accent);
   border-radius: 3px;
   transition: width 0.2s linear;
 }
 
-/* Expanded body: the shared controls. YoutubeControls renders its own fieldset. */
 .yt-body { padding: 8px; max-height: 60vh; overflow-y: auto; }
-.yt-body :deep(fieldset) { border-color: var(--border); }
 </style>

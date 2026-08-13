@@ -1,31 +1,48 @@
 <!--
   PresetPanel.vue (M6)
-  Save and load scene presets. The moderator can snapshot the current layer
-  arrangement under a name, then restore it later. A quick way to switch
-  between pre-built setups (e.g. "Starting Soon", "BRB", "Ending").
+  Save and load scene presets. Fluent chrome (Phase 2).
 -->
 <template>
   <div class="preset-panel" v-if="open">
-    <div class="preset-head">
-      <span class="preset-title">📋 Presets</span>
+    <div class="fluent-panel-head">
+      <span class="fluent-panel-title">
+        <LayoutTemplate class="h-4 w-4" />
+        Presets
+      </span>
       <span class="spacer"></span>
-      <button class="btn-sm" @click="$emit('close')" title="Close">✕</button>
+      <Button variant="ghost" size="icon" class="h-7 w-7" title="Close" @click="$emit('close')">
+        <X class="h-4 w-4" />
+      </Button>
     </div>
     <div class="preset-save">
-      <input v-model="newName" placeholder="Preset name..." @keydown.enter="onSave" />
-      <button class="btn-sm primary" @click="onSave" :disabled="!newName.trim()">Save current</button>
+      <Input v-model="newName" placeholder="Preset name..." @keydown.enter="onSave" />
+      <Button size="sm" :disabled="!newName.trim()" @click="onSave">Save current</Button>
     </div>
-    <div class="preset-list" v-if="scene.presets.length">
-      <div v-for="p in scene.presets" :key="p.id" class="preset-item">
-        <div class="preset-info">
-          <span class="preset-name">{{ p.name }}</span>
-          <span class="preset-meta muted">{{ (p.snapshot || []).length }} layers</span>
-        </div>
-        <div class="preset-actions">
-          <button class="btn-sm primary" @click="onLoad(p)" title="Load this preset">Load</button>
-          <button class="btn-sm danger" @click="onDelete(p)" title="Delete preset">🗑</button>
-        </div>
-      </div>
+    <div class="preset-list list-stagger" v-if="scene.presets.length">
+      <ContextMenu v-for="p in scene.presets" :key="p.id">
+        <ContextMenuTrigger as-child>
+          <div class="preset-item">
+            <div class="preset-info">
+              <span class="preset-name">{{ p.name }}</span>
+              <span class="preset-meta muted">{{ (p.snapshot || []).length }} layers</span>
+            </div>
+            <div class="preset-actions">
+              <Button size="sm" variant="secondary" title="Load this preset" @click="onLoad(p)">Load</Button>
+              <Button size="icon" variant="destructive" class="h-7 w-7" title="Delete preset" @click="onDelete(p)">
+                <Trash2 class="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </div>
+        </ContextMenuTrigger>
+        <ContextMenuContent>
+          <ContextMenuItem @select="onLoad(p)">
+            <FolderOpen /> {{ t('ctx.load') }}
+          </ContextMenuItem>
+          <ContextMenuItem destructive @select="onDelete(p)">
+            <Trash2 /> {{ t('ctx.delete') }}
+          </ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenu>
     </div>
     <div v-else class="preset-empty muted">
       No presets saved yet. Name the current arrangement and click Save.
@@ -35,12 +52,20 @@
 
 <script setup>
 import { ref } from 'vue'
+import { LayoutTemplate, Trash2, X, FolderOpen } from '@lucide/vue'
 import { useSceneStore } from '../../stores/scene.js'
+import { useI18n } from '@/i18n'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import {
+  ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem
+} from '@/components/ui/context-menu'
 
 defineProps({ open: { type: Boolean, default: true } })
 defineEmits(['close'])
 
 const scene = useSceneStore()
+const { t } = useI18n()
 const newName = ref('')
 
 async function onSave() {
@@ -68,53 +93,28 @@ async function onDelete(p) {
   right: 12px;
   width: 320px;
   max-height: calc(100vh - 100px);
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  box-shadow: var(--shadow);
+  border-radius: 8px;
   display: flex;
   flex-direction: column;
   z-index: 99;
   overflow: hidden;
 }
-.preset-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--border);
-  font-size: 13px;
-}
-.preset-title { font-weight: 600; }
-.spacer { flex: 1; }
 .preset-save {
   display: flex;
   gap: 6px;
   padding: 10px 12px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--fluent-stroke);
 }
-.preset-save input {
-  flex: 1;
-  font-size: 12px;
-  padding: 4px 8px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: var(--bg);
-  color: var(--text);
-}
-.preset-list {
-  overflow-y: auto;
-  flex: 1;
-}
+.preset-list { overflow-y: auto; flex: 1; }
 .preset-item {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 8px 12px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--fluent-stroke);
   transition: background 0.15s;
 }
-.preset-item:hover { background: var(--hover); }
+.preset-item:hover { background: var(--fluent-reveal); }
 .preset-info { flex: 1; min-width: 0; }
 .preset-name { font-size: 13px; font-weight: 500; }
 .preset-meta { font-size: 11px; }
@@ -124,18 +124,4 @@ async function onDelete(p) {
   text-align: center;
   font-size: 12px;
 }
-.btn-sm {
-  padding: 3px 8px;
-  font-size: 11px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: var(--bg);
-  color: var(--text);
-  cursor: pointer;
-}
-.btn-sm:hover { background: var(--hover); }
-.btn-sm.primary { border-color: var(--accent); color: var(--accent); }
-.btn-sm.primary:hover { background: rgba(59,130,246,0.15); }
-.btn-sm.danger { border-color: var(--danger); color: var(--danger); }
-.btn-sm.danger:hover { background: rgba(239,68,68,0.15); }
 </style>

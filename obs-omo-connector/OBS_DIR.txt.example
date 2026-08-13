@@ -1,0 +1,13 @@
+# OBS_DIR for compiling the plugin — NOT the installed OBS folder.
+#
+# Your install at C:\Program Files\obs-studio is a runtime app only
+# (bin/data/plugins). It does NOT contain obs.h / obs.lib needed to BUILD plugins.
+#
+# Put the path to an OBS *source build* or SDK prefix on ONE line below, e.g.:
+# C:\src\obs-studio\build
+#
+# After the plugin is built, install-plugin.bat / build-full.bat copy the DLL into:
+#   %AppData%\obs-studio\plugins\omo-connector\
+# which the installed OBS at Program Files will load automatically.
+#
+# Leave this file empty or delete it until you have a real OBS_DIR.
