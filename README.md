@@ -14,7 +14,7 @@
 - Живая синхронизация: перемещение, размер, play/pause/seek
 - SoundPad, очередь донатов, помощники Twitch, connector для удалённых модераторов
 
-Лицензия: [LICENSE](LICENSE). Модель угроз: [docs/THREAT-MODEL.md](docs/THREAT-MODEL.md). Пошаговое использование: [docs/USER.md](docs/USER.md).
+Лицензия: [LICENSE](LICENSE). Модель угроз: [docs/ru/THREAT-MODEL.md](docs/ru/THREAT-MODEL.md). Пошаговое использование: [docs/ru/USER.md](docs/ru/USER.md). Вся русская документация: [docs/ru/](docs/ru/README.md).
 
 ### Стример (ПК с OBS)
 
@@ -25,7 +25,7 @@
 3. **Первый запуск:** создайте PIN (4–16 букв/цифр). Делитесь PIN только с модераторами.
 4. В OBS: добавьте **OMO Overlay** (плагин) **Native** или **Browser (local)**, либо Browser Source 1920×1080 с URL оверлея из приложения. На том же ПК предпочтительно `http://127.0.0.1:8090/obs?t=…`.
 
-**Только плагин (без приложения на ПК стримера):** модератор запускает полную программу как host, копирует **overlay for streamer**, вы вставляете его в плагин **Browser (remote)**. См. [docs/CONNECTOR.md](docs/CONNECTOR.md).
+**Только плагин (без приложения на ПК стримера):** модератор запускает полную программу как host, копирует **overlay for streamer**, вы вставляете его в плагин **Browser (remote)**. См. [docs/ru/CONNECTOR.md](docs/ru/CONNECTOR.md).
 
 #### Portable
 
@@ -51,7 +51,7 @@ node server\index.js
 
 **Вы — host, у стримера только плагин:** запустите приложение как host, **Start relay**, скопируйте **overlay for streamer**. Стример использует плагин **Browser (remote)**. Вы редактируете локально; он только показывает оверлей.
 
-См. [docs/CONNECTOR.md](docs/CONNECTOR.md).
+См. [docs/ru/CONNECTOR.md](docs/ru/CONNECTOR.md).
 
 **Не открывайте** порт **8090** и OBS WebSocket **4455** в публичный интернет. PIN даёт полный доступ к редактору.
 
@@ -71,8 +71,9 @@ build-release.bat
 |------|----------|
 | `OBS-Moderator-Overlay-Setup-<version>.exe` | NSIS-установщик |
 | `OBS-Moderator-Overlay-<version>-win-x64-portable.zip` | Portable (без `.env`) |
+| `OBS-OMO-Connector-Plugin-Setup-<version>.exe` | Плагин OBS (от администратора) |
 
-Тег `v1.0.0` запускает [.github/workflows/release.yml](.github/workflows/release.yml). Dev portable: `build-portable.bat`. Подробности: [docs/BUILD.md](docs/BUILD.md).
+Тег `v1.0.0` запускает [.github/workflows/release.yml](.github/workflows/release.yml). Dev portable: `build-portable.bat`. Подробности: [docs/ru/BUILD.md](docs/ru/BUILD.md).
 
 ### Данные на диске
 
@@ -80,7 +81,7 @@ build-release.bat
 - `data/.secret` — PIN и viewer token (**никогда не коммитьте**)
 - `uploads/` — медиа и кэш эмоутов
 
-Скопируйте [`.env.example`](.env.example) в `.env` для опциональных ключей Twitch / DonationAlerts / Donatex. См. [docs/CREDENTIALS.md](docs/CREDENTIALS.md).
+Скопируйте [`.env.example`](.env.example) в `.env` для опциональных ключей Twitch / DonationAlerts / Donatex. См. [docs/ru/CREDENTIALS.md](docs/ru/CREDENTIALS.md).
 
 ### Возможности (1.0)
 
@@ -91,7 +92,7 @@ build-release.bat
 - Очередь донатов (DonationAlerts / Donatex) при настройке
 - Опциональный плагин OBS (`obs-omo-connector/`)
 
-Заметки / research: [docs/HORIZON.md](docs/HORIZON.md).
+Заметки / research: [docs/ru/HORIZON.md](docs/ru/HORIZON.md).
 
 ---
 
