@@ -2,6 +2,12 @@
 
 **Version 1.0** — MIT.
 
+Удалённый оверлей для [OBS Studio](https://obsproject.com/). Вы (или доверенный модератор) раскладываете картинки, GIF, видео, аудио, YouTube, стикеры и браузер-виджеты на сцене **1920×1080**. OBS показывает ту же сцену в эфире через **Browser Source** (или опциональный нативный плагин).
+
+- Редактор в стиле Fluent / WinUI (тёмная/светлая тема, RU/EN)
+- Живая синхронизация: перемещение, размер, play/pause/seek
+- SoundPad, очередь донатов, помощники Twitch, connector для удалённых модераторов
+
 A remote-controlled overlay for [OBS Studio](https://obsproject.com/). You (or a trusted moderator) arrange images, GIFs, video, audio, YouTube, stickers, and browser widgets on a **1920×1080** stage. OBS shows the same scene live via a **Browser Source** (or the optional native plugin).
 
 - Fluent / WinUI-style editor (dark/light, RU/EN)
