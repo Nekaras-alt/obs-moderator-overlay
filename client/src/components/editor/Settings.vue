@@ -117,9 +117,13 @@
             <ol class="hs-steps">
               <li v-for="n in meta.steps" :key="n">{{ t(`settings.connector.steps.${meta.id}.${n}`) }}</li>
             </ol>
+            <small v-if="meta.steam" class="muted">
+              <a class="doc-link" :href="meta.steam" target="_blank" rel="noopener noreferrer">{{ t('settings.connector.steamPage') }}</a>
+            </small>
             <small v-if="meta.docs" class="muted">
               <button type="button" class="doc-link" @click="openDoc(meta.docs)">{{ t('settings.connector.docsMore') }}</button>
             </small>
+            <p v-if="meta.id === 'porthole'" class="conn-who muted">{{ t('settings.connector.portholeNote') }}</p>
 
             <template v-if="meta.id === 'headscale'">
               <Input v-model="headscaleUrl" class="h-8" placeholder="https://headscale.example" />
@@ -350,6 +354,7 @@ const CONNECTOR_TRANSPORTS = [
   { id: 'netbird', steps: 8, docs: '' },
   { id: 'zerotier', steps: 8, docs: '' },
   { id: 'radmin', steps: 8, docs: '' },
+  { id: 'porthole', steps: 8, docs: '/docs/PORTHOLE.md', steam: 'https://store.steampowered.com/app/4963920/Porthole__Local_Port_Sharing/' },
   { id: 'wireguard', steps: 7, docs: '/docs/CONNECTOR.md' },
   { id: 'cloudflare', steps: 6, docs: '' },
   { id: 'relay', steps: 7, docs: '/docs/CONNECTOR.md' }

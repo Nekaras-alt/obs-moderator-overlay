@@ -117,10 +117,26 @@ static void destroy_browser(omo_source *ctx)
 	}
 }
 
-static void ensure_browser(omo_source *ctx, const char *url)
+/* Mesh Tailscale/etc. need ?t=viewerToken. Relay /o/{code}/obs injects token server-side. */
+static bool remote_url_missing_token(const std::string &url)
+{
+	if (url.empty())
+		return false;
+	if (url.find("/o/") != std::string::npos)
+		return false;
+	return url.find("t=") == std::string::npos;
+}
+
+static void ensure_browser(omo_source *ctx, const char *url, bool force_reload)
 {
 	if (!url || !*url)
 		return;
+
+	/* Same URL via obs_source_update does not navigate CEF — recreate to actually reload. */
+	if (force_reload && ctx->browser) {
+		destroy_browser(ctx);
+		ctx->last_url.clear();
+	}
 
 	obs_data_t *settings = obs_data_create();
 	obs_data_set_string(settings, "url", url);
@@ -150,6 +166,17 @@ static void ensure_browser(omo_source *ctx, const char *url)
 	ctx->last_url = url;
 }
 
+static bool browser_needs_update(omo_source *ctx, const std::string &url)
+{
+	if (!ctx->browser || url != ctx->last_url)
+		return true;
+	if (obs_source_get_width(ctx->browser) != ctx->width)
+		return true;
+	if (obs_source_get_height(ctx->browser) != ctx->height)
+		return true;
+	return false;
+}
+
 static void heartbeat(omo_source *ctx, bool connected, uint32_t frameId)
 {
 	char body[384];
@@ -167,7 +194,7 @@ static void heartbeat(omo_source *ctx, bool connected, uint32_t frameId)
 	http_post_local(ctx->hostPort, "/api/obs-plugin/heartbeat", body);
 }
 
-static void refresh_browser(omo_source *ctx)
+static void refresh_browser(omo_source *ctx, bool force_reload)
 {
 	if (!ctx->active) {
 		set_status(ctx, obs_module_text("StatusInactive"), false);
@@ -180,6 +207,7 @@ static void refresh_browser(omo_source *ctx)
 		set_status(ctx, obs_module_text("StatusHostOffline"), false);
 		heartbeat(ctx, false, 0);
 		char fallback[320];
+		/* Prefer tokenized URL from host; bare /obs cannot fetch viewer-token remotely. */
 		snprintf(fallback, sizeof(fallback), "http://127.0.0.1:%u/obs", (unsigned)ctx->hostPort);
 		url = fallback;
 	} else {
@@ -187,12 +215,12 @@ static void refresh_browser(omo_source *ctx)
 		heartbeat(ctx, true, 0);
 	}
 
-	if (url == ctx->last_url && ctx->browser)
+	if (!force_reload && !browser_needs_update(ctx, url))
 		return;
-	ensure_browser(ctx, url.c_str());
+	ensure_browser(ctx, url.c_str(), force_reload);
 }
 
-static void refresh_browser_remote(omo_source *ctx)
+static void refresh_browser_remote(omo_source *ctx, bool force_reload)
 {
 	if (!ctx->active) {
 		set_status(ctx, obs_module_text("StatusInactive"), false);
@@ -210,10 +238,18 @@ static void refresh_browser_remote(omo_source *ctx)
 		return;
 	}
 
-	set_status(ctx, obs_module_text("StatusRemoteOverlay"), true);
-	if (url == ctx->last_url && ctx->browser)
+	if (remote_url_missing_token(url)) {
+		set_status(ctx, obs_module_text("StatusRemoteNeedToken"), false);
+		blog(LOG_WARNING,
+		     "[omo-connector] remote overlay URL has no ?t= token (and is not relay /o/…). "
+		     "Paste the full URL from Settings → Connector.");
+	} else {
+		set_status(ctx, obs_module_text("StatusRemoteOverlay"), true);
+	}
+
+	if (!force_reload && !browser_needs_update(ctx, url))
 		return;
-	ensure_browser(ctx, url.c_str());
+	ensure_browser(ctx, url.c_str(), force_reload);
 }
 
 static void update_native_status(omo_source *ctx)
@@ -264,7 +300,7 @@ static void apply_mode_runtime(omo_source *ctx)
 	} else if (ctx->mode == OmoMode::BrowserRemote) {
 		ctx->frames.stop_reader();
 		if (ctx->active)
-			refresh_browser_remote(ctx);
+			refresh_browser_remote(ctx, false);
 		else {
 			destroy_browser(ctx);
 			set_status(ctx, obs_module_text("StatusInactive"), false);
@@ -272,7 +308,7 @@ static void apply_mode_runtime(omo_source *ctx)
 	} else {
 		ctx->frames.stop_reader();
 		if (ctx->active)
-			refresh_browser(ctx);
+			refresh_browser(ctx, false);
 		else {
 			destroy_browser(ctx);
 			set_status(ctx, obs_module_text("StatusInactive"), false);
@@ -375,11 +411,9 @@ static bool refresh_clicked(obs_properties_t *, obs_property_t *, void *data)
 	omo_source *ctx = (omo_source *)data;
 	if (ctx) {
 		if (ctx->mode == OmoMode::Browser) {
-			ctx->last_url.clear();
-			refresh_browser(ctx);
+			refresh_browser(ctx, true);
 		} else if (ctx->mode == OmoMode::BrowserRemote) {
-			ctx->last_url.clear();
-			refresh_browser_remote(ctx);
+			refresh_browser_remote(ctx, true);
 		} else {
 			ctx->frames.discover(ctx->hostPort);
 			ctx->frames.stop_reader();
@@ -476,9 +510,9 @@ static void omo_video_tick(void *data, float seconds)
 			update_native_status(ctx);
 		} else if (ctx->mode == OmoMode::BrowserRemote) {
 			if (ctx->auto_refresh)
-				refresh_browser_remote(ctx);
+				refresh_browser_remote(ctx, false);
 		} else if (ctx->auto_refresh) {
-			refresh_browser(ctx);
+			refresh_browser(ctx, false);
 		} else {
 			heartbeat(ctx, ctx->host_ok, 0);
 		}

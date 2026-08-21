@@ -12,5 +12,6 @@
 | Threat model | [THREAT-MODEL.md](THREAT-MODEL.md) | [ru/THREAT-MODEL.md](ru/THREAT-MODEL.md) |
 | OBS Preview | [OBS-PREVIEW.md](OBS-PREVIEW.md) | [ru/OBS-PREVIEW.md](ru/OBS-PREVIEW.md) |
 | Tailscale | [TAILSCALE.md](TAILSCALE.md) | [ru/TAILSCALE.md](ru/TAILSCALE.md) |
+| Porthole | [PORTHOLE.md](PORTHOLE.md) | [ru/PORTHOLE.md](ru/PORTHOLE.md) |
 | Headscale | [HEADSCALE.md](HEADSCALE.md) | [ru/HEADSCALE.md](ru/HEADSCALE.md) |
 | Horizon | [HORIZON.md](HORIZON.md) | [ru/HORIZON.md](ru/HORIZON.md) |

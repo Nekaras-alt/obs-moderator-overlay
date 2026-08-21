@@ -118,6 +118,14 @@ app.get('/api/health', (_req, res) => {
     if (fb) frameBridge = fb.status()
   } catch (_) { /* ignore */ }
   const st = connector.status()
+  let viewers = 0
+  let moderators = 0
+  for (const ws of clients) {
+    const r = ws._meta?.role
+    if (r === 'viewer') viewers++
+    else if (r === 'moderator') moderators++
+  }
+  const vt = getSecret().viewerToken || ''
   res.json({
     ok: true,
     port: Number(PORT) || 8090,
@@ -130,7 +138,12 @@ app.get('/api/health', (_req, res) => {
       rttMs: st.relay?.rttMs ?? null,
       joinCode: st.relay?.joinCode || null
     },
+    ws: { viewers, moderators, total: clients.size },
+    /** Last 4 of viewer token — compare with ?t=… in pasted overlay URL (stale token = Unauthorized). */
+    viewerTokenTail: vt.slice(-4),
     sceneRev: store.rev,
+    audienceLayers: (store.scene.layers || []).filter((l) => l.audienceVisible).length,
+    totalLayers: (store.scene.layers || []).length,
     ts: Date.now()
   })
 })
@@ -506,6 +519,12 @@ wss.on('connection', (ws, req) => {
   const role = roleForToken(token)
 
   if (!role) {
+    const got = String(token || '')
+    const expect = String(getSecret().viewerToken || '')
+    console.warn(
+      `[ws] Unauthorized token (len=${got.length} tail=${got.slice(-4) || '—'}; ` +
+        `viewerToken tail=${expect.slice(-4) || '—'}). Re-copy overlay URL from Connector.`
+    )
     ws.send(JSON.stringify({ type: 'error', error: 'Unauthorized' }))
     ws.close(4001, 'unauthorized')
     return

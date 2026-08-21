@@ -2,7 +2,7 @@
 
 Remote overlay for OBS Moderator Overlay. In **Settings → Connector** each transport is a spoiler (priority order). Several clients can be up at once; **active** is the first that answers a live probe.
 
-OMO does **not** ship Tailscale, Headscale, NetBird, ZeroTier, Radmin VPN, WireGuard, or cloudflared. You install those yourself and accept their terms.
+OMO does **not** ship Tailscale, Headscale, NetBird, ZeroTier, Radmin VPN, Porthole, WireGuard, or cloudflared. You install those yourself and accept their terms.
 
 ## Settings spoilers (priority)
 
@@ -11,11 +11,12 @@ OMO does **not** ship Tailscale, Headscale, NetBird, ZeroTier, Radmin VPN, WireG
 3. **NetBird**
 4. **ZeroTier**
 5. **Radmin VPN**
-6. **WireGuard** — paste `.conf` in the spoiler.
-7. **Cloudflare Tunnel** — `cloudflared` to `localhost:8090`; save the public hostname.
-8. **Your WSS relay** — join code, Start/Stop, overlay URL via `relay/` on a VPS.
+6. **Porthole** — Steam port share of TCP `8090`; streamer uses `http://127.0.0.1:8090/obs?t=…`. See [PORTHOLE.md](PORTHOLE.md).
+7. **WireGuard** — paste `.conf` in the spoiler.
+8. **Cloudflare Tunnel** — `cloudflared` to `localhost:8090`; save the public hostname.
+9. **Your WSS relay** — join code, Start/Stop, overlay URL via `relay/` on a VPS.
 
-**Advanced:** harden / bind localhost, Native frames. Harden makes mesh IPs **not live** (correct: remote OBS cannot hit `:8090`).
+**Advanced:** harden / bind localhost, Native frames. Harden makes mesh IPs **not live** (correct: remote OBS cannot hit `:8090`). For **Porthole**, Harden may stay **on**.
 
 Copy **this spoiler’s** overlay URL into the streamer plugin **Browser (remote)**. Viewer token comes from `/api/viewer-token` (status bar / Settings).
 

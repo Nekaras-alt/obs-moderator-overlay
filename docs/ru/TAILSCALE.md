@@ -44,6 +44,7 @@ Relay / WireGuard / dual-mode Electron — см. **[CONNECTOR.md](CONNECTOR.md)*
 | Инструмент | Когда |
 |------------|--------|
 | **OMO WSS Relay** | Tailscale заблокирован/нестабилен (особенно RU) — [CONNECTOR.md](CONNECTOR.md) |
+| **Porthole** | Друзья Steam / share-код; стример на localhost — [PORTHOLE.md](PORTHOLE.md) |
 | Headscale | Свой control plane Tailscale — [HEADSCALE.md](HEADSCALE.md) |
 | WireGuard к VPS | Альтернатива mesh; профиль в Настройки → Connector |
 | Cloudflare Tunnel + Access | У мода нет Tailscale; нужен OTP (в РФ может быть недоступен) |

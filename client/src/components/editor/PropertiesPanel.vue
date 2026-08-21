@@ -112,11 +112,13 @@
               <Eye v-if="layer.audienceVisible" class="h-4 w-4" />
               <Lock v-else class="h-4 w-4" />
             </span>
-            <span class="reveal-label">{{ layer.audienceVisible ? 'VISIBLE TO AUDIENCE' : 'HIDDEN FROM AUDIENCE' }}</span>
+            <span class="reveal-label">{{ layer.audienceVisible ? 'ВИДНО АУДИТОРИИ (OBS)' : 'СКРЫТО ОТ АУДИТОРИИ' }}</span>
           </button>
         </div>
         <div class="reveal-hint">
-          {{ layer.audienceVisible ? 'This layer is shown on the OBS stream.' : 'Only you can see this layer. Click to reveal to audience.' }}
+          {{ layer.audienceVisible
+            ? 'Слой виден стримеру / в OBS. Красная рамка = скрыто, зелёная = видно.'
+            : 'В редакторе слой виден вам, но в OBS его нет. Нажмите, чтобы показать на стриме.' }}
         </div>
       </div>
 

@@ -42,6 +42,7 @@ For relay / WireGuard / dual-mode Electron setups, see **[CONNECTOR.md](CONNECTO
 | Tool | When |
 |------|------|
 | **OMO WSS Relay** | Tailscale blocked/unstable (esp. RU) — see [CONNECTOR.md](CONNECTOR.md) |
+| **Porthole** | Steam friends / share code; streamer uses localhost — [PORTHOLE.md](PORTHOLE.md) |
 | Headscale | Self-hosted Tailscale coordination — [HEADSCALE.md](HEADSCALE.md) |
 | WireGuard to VPS | Mesh alternative; import profile in Settings → Connector |
 | Cloudflare Tunnel + Access | Mod has no Tailscale; need OTP (may be blocked in RU) |

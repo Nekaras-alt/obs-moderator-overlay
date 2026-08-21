@@ -66,8 +66,8 @@
         <button
           class="icon"
           :class="{ on: layer.audienceVisible }"
-          :title="layer.audienceVisible ? 'Shown to audience (on OBS)' : 'Hidden from audience'"
-          :aria-label="layer.audienceVisible ? 'Hide from audience' : 'Show to audience'"
+          :title="layer.audienceVisible ? 'Видно аудитории (OBS)' : 'Скрыто от аудитории — в OBS не видно'"
+          :aria-label="layer.audienceVisible ? 'Скрыть от аудитории' : 'Показать аудитории'"
           @click.stop="scene.updateLayer(layer.id, { audienceVisible: !layer.audienceVisible })"
         >
           <Globe v-if="layer.audienceVisible" class="h-3.5 w-3.5" />

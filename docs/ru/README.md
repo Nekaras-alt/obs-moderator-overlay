@@ -11,5 +11,6 @@
 | [THREAT-MODEL.md](THREAT-MODEL.md) | Модель угроз connector |
 | [OBS-PREVIEW.md](OBS-PREVIEW.md) | Превью OBS в редакторе |
 | [TAILSCALE.md](TAILSCALE.md) | ACL Tailscale |
+| [PORTHOLE.md](PORTHOLE.md) | Porthole (Steam, localhost) |
 | [HEADSCALE.md](HEADSCALE.md) | Свой Headscale |
 | [HORIZON.md](HORIZON.md) | Отложенный roadmap (P5) |

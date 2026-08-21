@@ -15,6 +15,7 @@ export const useSceneStore = defineStore('scene', {
     presets: [],
     trash: [],
     connected: false,
+    lastError: null,
     selectedId: null,
     // OBS bridge: native source boundaries from OBS (editor-only overlay).
     obsSources: [],
@@ -128,6 +129,7 @@ export const useSceneStore = defineStore('scene', {
         socket.onStatus((v) => (this.connected = v))
         this._wsBound = true
       }
+      this.lastError = null
       socket.connect(token)
     },
     disconnect() {
@@ -240,6 +242,7 @@ export const useSceneStore = defineStore('scene', {
         }
       } else if (msg.type === 'error') {
         console.warn('[scene] server error:', msg.error)
+        this.lastError = msg.error || 'error'
       }
     },
 

@@ -4,7 +4,7 @@
 
 Удалённый оверлей для OBS Moderator Overlay. В **Настройки → Connector** каждый транспорт — спойлер (по приоритету). Несколько клиентов могут быть подняты сразу; **активный** — первый, кто отвечает на живой probe.
 
-OMO **не** поставляет Tailscale, Headscale, NetBird, ZeroTier, Radmin VPN, WireGuard или cloudflared. Их ставите вы сами и принимаете их правила.
+OMO **не** поставляет Tailscale, Headscale, NetBird, ZeroTier, Radmin VPN, Porthole, WireGuard или cloudflared. Их ставите вы сами и принимаете их правила.
 
 ## Спойлеры в настройках (приоритет)
 
@@ -13,11 +13,12 @@ OMO **не** поставляет Tailscale, Headscale, NetBird, ZeroTier, Radmi
 3. **NetBird**
 4. **ZeroTier**
 5. **Radmin VPN**
-6. **WireGuard** — вставьте `.conf` в спойлер.
-7. **Cloudflare Tunnel** — `cloudflared` на `localhost:8090`; сохраните публичный hostname.
-8. **Ваш WSS relay** — join code, Start/Stop, URL оверлея через `relay/` на VPS.
+6. **Porthole** — шаринг TCP `8090` через Steam; стример открывает `http://127.0.0.1:8090/obs?t=…`. См. [PORTHOLE.md](PORTHOLE.md).
+7. **WireGuard** — вставьте `.conf` в спойлер.
+8. **Cloudflare Tunnel** — `cloudflared` на `localhost:8090`; сохраните публичный hostname.
+9. **Ваш WSS relay** — join code, Start/Stop, URL оверлея через `relay/` на VPS.
 
-**Дополнительно:** harden / bind localhost, Native frames. Harden делает mesh IP **не live** (так и должно: удалённый OBS не достучится до `:8090`).
+**Дополнительно:** harden / bind localhost, Native frames. Harden делает mesh IP **не live** (так и должно: удалённый OBS не достучится до `:8090`). Для **Porthole** Harden можно оставить **вкл**.
 
 Скопируйте URL оверлея **этого** спойлера в плагин стримера **Browser (remote)**. Viewer token — из `/api/viewer-token` (status bar / Настройки).
 

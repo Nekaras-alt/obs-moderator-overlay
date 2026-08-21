@@ -15,10 +15,14 @@ export const TRANSPORT_RANK = [
   'netbird',
   'zerotier',
   'radmin',
+  'porthole',
   'wireguard',
   'cloudflare',
   'relay'
 ]
+
+/** Steam AppID for Porthole - Local Port Sharing */
+const PORTHOLE_APPID = '4963920'
 
 const WIN = process.platform === 'win32'
 const CLI_MS = 1000
@@ -165,6 +169,95 @@ async function findExe(winRels, linuxPaths, whichName) {
   return firstExisting(local) || (await whichCmd(whichName))
 }
 
+function steamLibraryRoots() {
+  const roots = new Set()
+  const seeds = WIN
+    ? [
+        path.join(pf86(), 'Steam'),
+        path.join(pf(), 'Steam'),
+        path.join(localApp(), 'Steam')
+      ]
+    : [
+        path.join(os.homedir(), '.steam', 'steam'),
+        path.join(os.homedir(), '.local', 'share', 'Steam'),
+        path.join(os.homedir(), '.var', 'app', 'com.valvesoftware.Steam', 'data', 'Steam')
+      ]
+  for (const s of seeds) {
+    if (exists(s)) roots.add(s)
+    const vdf = path.join(s, 'steamapps', 'libraryfolders.vdf')
+    if (!exists(vdf)) continue
+    try {
+      const text = fs.readFileSync(vdf, 'utf8')
+      for (const m of text.matchAll(/"path"\s+"([^"]+)"/gi)) {
+        const p = m[1].replace(/\\\\/g, '\\')
+        if (p && exists(p)) roots.add(p)
+      }
+    } catch { /* ignore */ }
+  }
+  return [...roots]
+}
+
+function portholeExeCandidates(steamRoot) {
+  const common = path.join(steamRoot, 'steamapps', 'common')
+  const dirs = [
+    'Porthole',
+    'Porthole - Local Port Sharing',
+    'Porthole Local Port Sharing'
+  ]
+  const exes = WIN
+    ? ['Porthole.exe', 'porthole.exe']
+    : ['Porthole', 'porthole', 'Porthole.x86_64']
+  const out = []
+  for (const d of dirs) {
+    for (const e of exes) out.push(path.join(common, d, e))
+  }
+  const acf = path.join(steamRoot, 'steamapps', `appmanifest_${PORTHOLE_APPID}.acf`)
+  if (exists(acf)) {
+    try {
+      const text = fs.readFileSync(acf, 'utf8')
+      const m = text.match(/"installdir"\s+"([^"]+)"/i)
+      if (m?.[1]) {
+        for (const e of exes) out.push(path.join(common, m[1], e))
+      }
+    } catch { /* ignore */ }
+  }
+  return out
+}
+
+async function findPortholeExe() {
+  const paths = []
+  for (const root of steamLibraryRoots()) {
+    paths.push(...portholeExeCandidates(root))
+  }
+  if (WIN) {
+    paths.push(
+      ...winCandidates([
+        'Steam\\steamapps\\common\\Porthole\\Porthole.exe',
+        'Steam\\steamapps\\common\\Porthole - Local Port Sharing\\Porthole.exe'
+      ])
+    )
+  } else {
+    paths.push(
+      ...linuxCandidates([
+        path.join(os.homedir(), '.steam', 'steam', 'steamapps', 'common', 'Porthole', 'Porthole'),
+        '/usr/bin/porthole'
+      ])
+    )
+  }
+  return firstExisting(paths) || (await whichCmd('porthole'))
+}
+
+async function isPortholeRunning() {
+  if (WIN) {
+    const r = await execTimed('tasklist', ['/FI', 'IMAGENAME eq Porthole.exe', '/NH'], CLI_MS)
+    return /porthole\.exe/i.test(r.stdout || '')
+  }
+  const r = await execTimed('pgrep', ['-xi', 'porthole'], CLI_MS)
+  if (r.ok && String(r.stdout || '').trim()) return true
+  const r2 = await execTimed('pgrep', ['-fi', 'Porthole'], CLI_MS)
+  return !!(r2.ok && String(r2.stdout || '').trim())
+}
+
 async function tailscaleStatusJson(exe) {
   if (!exe) return null
   const r = await execTimed(exe, ['status', '--json'], CLI_MS)
@@ -223,7 +316,7 @@ export async function detectTransports(opts = {}) {
   const rdIf = ifacesFor('radmin', ifaces)
   const wgIf = ifacesFor('wireguard', ifaces)
 
-  const [tsExe, nbExe, ztExe, rdExe, wgExe, cfExe] = await Promise.all([
+  const [tsExe, nbExe, ztExe, rdExe, phExe, wgExe, cfExe] = await Promise.all([
     findTailscaleExe(),
     findExe(['NetBird\\netbird.exe', 'netbird\\netbird.exe'], ['/usr/bin/netbird', '/usr/local/bin/netbird'], 'netbird'),
     findExe(
@@ -232,9 +325,11 @@ export async function detectTransports(opts = {}) {
       'zerotier-cli'
     ),
     findExe(['Radmin VPN\\RadminVPN.exe', 'Radmin VPN\\RvpnSvc.exe'], [], 'RadminVPN'),
+    findPortholeExe(),
     findExe(['WireGuard\\wireguard.exe', 'WireGuard\\wg.exe'], ['/usr/bin/wg', '/usr/bin/wg-quick'], 'wireguard'),
     findExe(['cloudflared\\cloudflared.exe'], ['/usr/bin/cloudflared', '/usr/local/bin/cloudflared'], 'cloudflared')
   ])
+  const phRunning = phExe ? await isPortholeRunning() : false
 
   const tsJson = tsExe ? await tailscaleStatusJson(tsExe) : null
   const controlUrl = tsExe ? await tailscaleControlUrl(tsExe) : ''
@@ -303,6 +398,17 @@ export async function detectTransports(opts = {}) {
       overlayUrl: meshOverlay(rdPick.ip, port),
       needsToken: true
     },
+    porthole: {
+      ...itemBase('porthole'),
+      installed: !!phExe,
+      up: phRunning,
+      live: false,
+      ip: '127.0.0.1',
+      iface: null,
+      overlayUrl: meshOverlay('127.0.0.1', port),
+      needsToken: true,
+      hint: 'streamer-url-is-localhost-after-porthole-approve'
+    },
     wireguard: {
       ...itemBase('wireguard'),
       installed: !!(wgExe || wgIf.length || (wgConfPath && exists(wgConfPath))),
@@ -346,7 +452,7 @@ export async function detectTransports(opts = {}) {
 
   const probes = []
   for (const id of TRANSPORT_RANK) {
-    if (id === 'relay') continue
+    if (id === 'relay' || id === 'porthole') continue
     const it = items[id]
     if (id === 'cloudflare') {
       if (it.overlayUrl) {
@@ -364,6 +470,8 @@ export async function detectTransports(opts = {}) {
     }
   }
   await Promise.all(probes)
+  // Never mark Porthole live via localhost health — would steal activeId from mesh VPNs.
+  items.porthole.live = false
 
   const list = TRANSPORT_RANK.map((id) => items[id])
   const activeId = list.find((i) => i.live)?.id || null
